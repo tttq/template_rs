@@ -1,0 +1,39 @@
+#:schema https://summer-rs.github.io/config-schema.json
+
+[web]
+port = 8080
+graceful = true
+
+[sea-orm]
+uri = "${DATABASE_URL:postgres://postgres:root@localhost:5432/template}"
+min_connections = 1
+max_connections = 10
+enable_logging = true
+
+[sa-token]
+token_name = "Authorization"
+timeout = 86400
+auto_renew = true
+token_style = "Jwt"
+token_prefix = "Bearer "
+jwt_secret_key = "template-admin-jwt-secret-key-2024"
+jwt_algorithm = "HS256"
+storage_prefix = "template"
+rewrite_storage_prefix = true
+
+[redis]
+uri = "redis://localhost:6379"
+
+[common]
+default_user = "system"
+
+[sea-orm-ext.tenant]
+enabled = true
+mode = "table"
+default_tenant_id = 1
+header_name = "x-tenant-id"
+ignore_if_missing = true
+
+[storage]
+enabled = false
+provider = "minio"

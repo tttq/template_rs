@@ -1,0 +1,17 @@
+target
+firedbg
+Cargo.lock
+*.sublime*
+.vscode
+.idea/*
+*/.idea/*
+.env.local
+.DS_Store
+*/.cargo
+target/*
+.trae
+*/dist
+*/node_modules
+*/target
+AGENTS.md
+*-wms.md

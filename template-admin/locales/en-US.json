@@ -1,0 +1,18 @@
+{
+  "app": {
+    "title": "Template Admin",
+    "description": "Enterprise Admin Template"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "reset": "Reset",
+    "confirm": "Confirm",
+    "success": "Operation Successful",
+    "error": "Operation Failed"
+  }
+}

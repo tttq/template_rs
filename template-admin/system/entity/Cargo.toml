@@ -1,0 +1,13 @@
+[package]
+name = "system-entity"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../../common" }
+sea-orm = "2.0.0-rc.38"
+sea-orm-ext = { git = "https://github.com/tttq/sea-orm-ext" }
+sea-query = "1.0.0-rc.33"
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }

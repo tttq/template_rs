@@ -1,0 +1,10 @@
+[package]
+name = "system-domain"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+system-entity = { path = "../entity" }
+common = { path = "../../common" }
+sea-orm = "2.0.0-rc.38"
+async-trait = "0.1"

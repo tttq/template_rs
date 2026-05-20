@@ -1,0 +1,15 @@
+[package]
+name = "system-application"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+system-entity = { path = "../entity" }
+common = { path = "../../common" }
+sea-orm = "2.0.0-rc.38"
+summer = "0.5.0-rc.1"
+summer-sea-orm = "0.5.0-rc.1"
+sa-token-core = "0.1.15"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

@@ -1,0 +1,19 @@
+pub mod user;
+pub mod role;
+pub mod menu;
+pub mod dept;
+pub mod tenant;
+pub mod dict_type;
+pub mod dict_item;
+pub mod config;
+pub mod role_menu;
+pub mod user_role;
+pub mod rbac_resource;
+pub mod rbac_permission;
+pub mod rbac_role;
+pub mod rbac_role_hierarchy;
+pub mod rbac_role_permission;
+pub mod rbac_user_role;
+pub mod rbac_user_override;
+
+pub use sea_orm;

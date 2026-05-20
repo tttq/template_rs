@@ -1,0 +1,13 @@
+[package]
+name = "system-interface"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+system-entity = { path = "../entity" }
+system-domain = { path = "../domain" }
+system-application = { path = "../application" }
+common = { path = "../../common" }
+summer-web = "0.5.0-rc.1"
+summer-sa-token = "0.5.0-rc.1"
+serde_json = "1"

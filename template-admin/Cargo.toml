@@ -1,0 +1,33 @@
+[workspace]
+members = [
+    "common",
+    "system/entity",
+    "system/domain",
+    "system/application",
+    "system/infrastructure",
+    "system/interface",
+    "migration",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[package]
+name = "template-admin"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+summer = "0.5.0-rc.1"
+summer-web = "0.5.0-rc.1"
+summer-sea-orm = { version = "0.5.0-rc.1", features = ["postgres", "rustls"] }
+summer-redis = "0.5.0-rc.1"
+summer-sa-token = { version = "0.5.0-rc.1", features = ["with-summer-redis"] }
+sea-orm-ext = { git = "https://github.com/tttq/sea-orm-ext" }
+common = { path = "common" }
+system-interface = { path = "system/interface" }
+tokio = { version = "1", features = ["full"] }
+sea-query = "1.0.0-rc.33"
+chrono = { version = "0.4", features = ["serde"] }

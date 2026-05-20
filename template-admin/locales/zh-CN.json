@@ -1,0 +1,18 @@
+{
+  "app": {
+    "title": "Template Admin",
+    "description": "企业级后台管理模板"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "新增",
+    "search": "搜索",
+    "reset": "重置",
+    "confirm": "确定",
+    "success": "操作成功",
+    "error": "操作失败"
+  }
+}

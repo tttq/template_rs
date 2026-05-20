@@ -1,0 +1,20 @@
+pub mod user_repository_impl;
+pub mod role_repository_impl;
+pub mod menu_repository_impl;
+pub mod dept_repository_impl;
+pub mod tenant_repository_impl;
+pub mod dict_repository_impl;
+pub mod config_repository_impl;
+pub mod user_role_repository_impl;
+pub mod role_menu_repository_impl;
+
+pub use user_repository_impl::UserRepositoryImpl;
+pub use role_repository_impl::RoleRepositoryImpl;
+pub use menu_repository_impl::MenuRepositoryImpl;
+pub use dept_repository_impl::DeptRepositoryImpl;
+pub use tenant_repository_impl::TenantRepositoryImpl;
+pub use dict_repository_impl::DictTypeRepositoryImpl;
+pub use dict_repository_impl::DictItemRepositoryImpl;
+pub use config_repository_impl::ConfigRepositoryImpl;
+pub use user_role_repository_impl::UserRoleRepositoryImpl;
+pub use role_menu_repository_impl::RoleMenuRepositoryImpl;
