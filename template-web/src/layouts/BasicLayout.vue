@@ -156,6 +156,8 @@ const MENU_PATH_I18N_MAP: Record<string, string> = {
   '/system/tenant': 'menu.tenant',
   '/system/dict': 'menu.dict',
   '/system/config': 'menu.config',
+  '/system/monitor': 'menu.monitor',
+  '/system/generator': 'menu.generator',
   '/profile': 'menu.profile',
 }
 

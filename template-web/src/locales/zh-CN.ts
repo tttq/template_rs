@@ -29,6 +29,8 @@ export default {
     configManage: '参数配置',
     profile: '个人中心',
     login: '登录',
+    serverMonitor: '服务监控',
+    codeGenerator: '代码生成',
   },
   menu: {
     dashboard: '仪表盘',
@@ -41,6 +43,8 @@ export default {
     dict: '字典管理',
     config: '参数配置',
     profile: '个人中心',
+    monitor: '服务监控',
+    generator: '代码生成',
   },
   common: {
     user: '用户',
@@ -63,5 +67,8 @@ export default {
     nickName: '昵称',
     email: '邮箱',
     phone: '手机号',
+  },
+  login: {
+    rememberMe: '记住登录状态',
   },
 }

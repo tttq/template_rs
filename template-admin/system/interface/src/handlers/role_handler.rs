@@ -60,7 +60,7 @@ async fn list_all_roles(
 #[sa_check_permission("role:list")]
 async fn get_role_by_id(
     Component(service): Component<RoleAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.get_by_id(id).await {
         Ok(role) => Json(ApiResponse::success(role)),
@@ -84,7 +84,7 @@ async fn create_role(
 #[sa_check_permission("role:edit")]
 async fn update_role(
     Component(service): Component<RoleAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(dto): Json<UpdateRoleDto>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut dto = dto;
@@ -99,7 +99,7 @@ async fn update_role(
 #[sa_check_permission("role:delete")]
 async fn delete_role(
     Component(service): Component<RoleAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.delete(id).await {
         Ok(()) => Json(ApiResponse::success("删除成功")),
@@ -111,12 +111,12 @@ async fn delete_role(
 #[sa_check_permission("role:edit")]
 async fn assign_role_menus(
     Component(service): Component<RoleAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(body): Json<serde_json::Value>,
 ) -> Result<impl IntoResponse, WebError> {
-    let menu_ids: Vec<i64> = body.get("menuIds")
+    let menu_ids: Vec<String> = body.get("menuIds")
         .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_i64()).collect())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
         .unwrap_or_default();
     Ok(match service.assign_menus(id, menu_ids).await {
         Ok(()) => Json(ApiResponse::success("分配成功")),
@@ -128,7 +128,7 @@ async fn assign_role_menus(
 #[sa_check_permission("role:list")]
 async fn get_role_menu_ids(
     Component(service): Component<RoleAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.get_role_menu_ids(id).await {
         Ok(ids) => Json(ApiResponse::success(ids)),

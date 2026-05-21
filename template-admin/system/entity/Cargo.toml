@@ -6,7 +6,8 @@ edition = "2024"
 [dependencies]
 common = { path = "../../common" }
 sea-orm = "2.0.0-rc.38"
-sea-orm-ext = { git = "https://github.com/tttq/sea-orm-ext" }
+#sea-orm-ext = { git = "https://github.com/tttq/sea-orm-ext" }
+sea-orm-ext =  { path = "D:\\Projcets\\Rust\\sea-orm-ext", features = ["summer","summer-web","default"]}
 sea-query = "1.0.0-rc.33"
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }

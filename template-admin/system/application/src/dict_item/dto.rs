@@ -7,7 +7,7 @@ use common::datetime_format;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDictItemDto {
-    pub dict_type_id: i64,
+    pub dict_type_id: String,
     pub dict_label: String,
     pub dict_value: String,
     pub sort_order: Option<i32>,
@@ -37,8 +37,8 @@ impl CreateDictItemDto {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateDictItemDto {
     #[serde(default)]
-    pub id: Option<i64>,
-    pub dict_type_id: Option<i64>,
+    pub id: Option<String>,
+    pub dict_type_id: Option<String>,
     pub dict_label: Option<String>,
     pub dict_value: Option<String>,
     pub sort_order: Option<i32>,
@@ -53,7 +53,7 @@ pub struct UpdateDictItemDto {
 impl UpdateDictItemDto {
     pub fn into_active_model(self) -> dict_item::ActiveModel {
         let mut model = dict_item::ActiveModel {
-            id: Set(self.id.unwrap_or(0)),
+            id: Set(self.id.unwrap_or_default()),
             version: Set(self.version.unwrap_or(0)),
             ..Default::default()
         };
@@ -72,8 +72,8 @@ impl UpdateDictItemDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DictItemVo {
-    pub id: i64,
-    pub dict_type_id: i64,
+    pub id: String,
+    pub dict_type_id: String,
     pub dict_label: String,
     pub dict_value: String,
     pub sort_order: i32,

@@ -67,6 +67,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/system/config/index.vue'),
         meta: { title: 'route.configManage', permission: 'config:list' },
       },
+      {
+        path: 'system/monitor',
+        name: 'MonitorServer',
+        component: () => import('@/views/system/monitor/index.vue'),
+        meta: { title: 'route.serverMonitor', permission: 'monitor:server' },
+      },
+      {
+        path: 'system/generator',
+        name: 'CodeGenerator',
+        component: () => import('@/views/system/generator/index.vue'),
+        meta: { title: 'route.codeGenerator', permission: 'tools:generator' },
+      },
     ],
   },
   {

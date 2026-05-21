@@ -4,17 +4,138 @@ import { authApi } from '@/api/auth'
 import type { UserInfo, LoginParams } from '@/api/auth'
 import type { MenuVo } from '@/api/menu'
 
+const TOKEN_KEY = 'token'
+const REFRESH_TOKEN_KEY = 'refreshToken'
+const EXPIRE_TIME_KEY = 'expireTime'
+const REFRESH_EXPIRE_TIME_KEY = 'refreshExpireTime'
+const TENANT_ID_KEY = 'tenantId'
+const RENEWAL_THRESHOLD_MS = 5 * 60 * 1000
+
+let renewalTimer: ReturnType<typeof setTimeout> | null = null
+
 export const useUserStore = defineStore('user', () => {
-  const token = ref<string>(localStorage.getItem('token') || '')
+  const token = ref<string>(localStorage.getItem(TOKEN_KEY) || '')
+  const refreshToken = ref<string>(localStorage.getItem(REFRESH_TOKEN_KEY) || '')
+  const expireTime = ref<number>(Number(localStorage.getItem(EXPIRE_TIME_KEY)) || 0)
+  const refreshExpireTime = ref<number>(Number(localStorage.getItem(REFRESH_EXPIRE_TIME_KEY)) || 0)
+  const tenantId = ref<string>(localStorage.getItem(TENANT_ID_KEY) || '')
   const userInfo = ref<UserInfo | null>(null)
   const roles = ref<string[]>([])
   const permissions = ref<string[]>([])
   const menus = ref<MenuVo[]>([])
 
+  function setTokenData(data: { token: string; refreshToken?: string; expireTime?: number; refreshExpireTime?: number }) {
+    token.value = data.token
+    localStorage.setItem(TOKEN_KEY, data.token)
+
+    if (data.refreshToken) {
+      refreshToken.value = data.refreshToken
+      localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken)
+    } else {
+      refreshToken.value = ''
+      localStorage.removeItem(REFRESH_TOKEN_KEY)
+    }
+
+    if (data.expireTime) {
+      expireTime.value = data.expireTime
+      localStorage.setItem(EXPIRE_TIME_KEY, String(data.expireTime))
+    } else {
+      expireTime.value = 0
+      localStorage.removeItem(EXPIRE_TIME_KEY)
+    }
+
+    if (data.refreshExpireTime) {
+      refreshExpireTime.value = data.refreshExpireTime
+      localStorage.setItem(REFRESH_EXPIRE_TIME_KEY, String(data.refreshExpireTime))
+    } else {
+      refreshExpireTime.value = 0
+      localStorage.removeItem(REFRESH_EXPIRE_TIME_KEY)
+    }
+
+    scheduleRenewal()
+  }
+
+  function clearTokenData() {
+    token.value = ''
+    refreshToken.value = ''
+    expireTime.value = 0
+    refreshExpireTime.value = 0
+    tenantId.value = ''
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+    localStorage.removeItem(EXPIRE_TIME_KEY)
+    localStorage.removeItem(REFRESH_EXPIRE_TIME_KEY)
+    localStorage.removeItem(TENANT_ID_KEY)
+    clearRenewalTimer()
+  }
+
+  function clearRenewalTimer() {
+    if (renewalTimer) {
+      clearTimeout(renewalTimer)
+      renewalTimer = null
+    }
+  }
+
+  function scheduleRenewal() {
+    clearRenewalTimer()
+
+    if (!refreshToken.value || !expireTime.value) return
+
+    const now = Date.now()
+    const expireMs = expireTime.value * 1000
+    const msUntilExpire = expireMs - now
+
+    if (msUntilExpire <= 0) {
+      tryAutoRenewal()
+      return
+    }
+
+    const msUntilRenewal = msUntilExpire - RENEWAL_THRESHOLD_MS
+    if (msUntilRenewal <= 0) {
+      tryAutoRenewal()
+      return
+    }
+
+    renewalTimer = setTimeout(() => {
+      tryAutoRenewal()
+    }, msUntilRenewal)
+  }
+
+  async function tryAutoRenewal(): Promise<boolean> {
+    if (!refreshToken.value) return false
+
+    const now = Date.now()
+    if (refreshExpireTime.value > 0) {
+      const refreshExpireMs = refreshExpireTime.value * 1000
+      if (now >= refreshExpireMs) {
+        clearTokenData()
+        return false
+      }
+    }
+
+    try {
+      const res = await authApi.refreshToken({ refreshToken: refreshToken.value })
+      setTokenData({
+        token: res.token,
+        refreshToken: res.refreshToken || refreshToken.value,
+        expireTime: res.expireTime,
+        refreshExpireTime: res.refreshExpireTime,
+      })
+      return true
+    } catch {
+      clearTokenData()
+      return false
+    }
+  }
+
   async function login(params: LoginParams) {
     const res = await authApi.login(params)
-    token.value = res.token
-    localStorage.setItem('token', res.token)
+    setTokenData({
+      token: res.token,
+      refreshToken: res.refreshToken,
+      expireTime: res.expireTime,
+      refreshExpireTime: res.refreshExpireTime,
+    })
     await getUserInfo()
   }
 
@@ -24,6 +145,10 @@ export const useUserStore = defineStore('user', () => {
     roles.value = res.roles || []
     permissions.value = res.permissions || []
     menus.value = res.menus || []
+    if (res.tenantId) {
+      tenantId.value = res.tenantId
+      localStorage.setItem(TENANT_ID_KEY, res.tenantId)
+    }
   }
 
   async function logout() {
@@ -32,17 +157,25 @@ export const useUserStore = defineStore('user', () => {
     } catch {
       // ignore
     }
-    token.value = ''
+    clearTokenData()
     userInfo.value = null
     roles.value = []
     permissions.value = []
     menus.value = []
-    localStorage.removeItem('token')
   }
 
   function hasPermission(perm: string) {
     return permissions.value.includes(perm)
   }
 
-  return { token, userInfo, roles, permissions, menus, login, getUserInfo, logout, hasPermission }
+  if (token.value && refreshToken.value) {
+    scheduleRenewal()
+  }
+
+  return {
+    token, refreshToken, expireTime, refreshExpireTime, tenantId,
+    userInfo, roles, permissions, menus,
+    login, getUserInfo, logout, hasPermission,
+    tryAutoRenewal, setTokenData,
+  }
 })

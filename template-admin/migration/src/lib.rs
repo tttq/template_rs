@@ -1,8 +1,7 @@
 use sea_orm_migration::prelude::*;
 
 mod m20220101_000001_initial;
-mod m20260101_000002_add_missing_columns;
-mod m20260102_000003_add_role_parent_id;
+mod m20240521_000002_tenant_user;
 
 pub struct Migrator;
 
@@ -11,8 +10,7 @@ impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
             Box::new(m20220101_000001_initial::Migration),
-            Box::new(m20260101_000002_add_missing_columns::Migration),
-            Box::new(m20260102_000003_add_role_parent_id::Migration),
+            Box::new(m20240521_000002_tenant_user::Migration),
         ]
     }
 }
@@ -21,7 +19,7 @@ impl MigratorTrait for Migrator {
 async fn run() {
     let args: Vec<String> = std::env::args().collect();
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:root@localhost:5432/template".to_string());
+        .unwrap_or_else(|_| "postgres://postgres:root@localhost:5432/template3".to_string());
 
     let (client, connection) = tokio_postgres::connect(&db_url, tokio_postgres::NoTls)
         .await

@@ -3,12 +3,15 @@
 [web]
 port = 8080
 graceful = true
+one_indexed = false     # 基于1的索引，默认关闭
+max_page_size = 2000    # 支持的最大页大小，避免服务器攻击出现OOM，默认值2000
+default_page_size = 20  # 默认页大小，20
 
 [sea-orm]
 uri = "${DATABASE_URL:postgres://postgres:root@localhost:5432/template}"
 min_connections = 1
 max_connections = 10
-enable_logging = true
+enable_logging = false
 
 [sa-token]
 token_name = "Authorization"
@@ -20,20 +23,41 @@ jwt_secret_key = "template-admin-jwt-secret-key-2024"
 jwt_algorithm = "HS256"
 storage_prefix = "template"
 rewrite_storage_prefix = true
+enable_refresh_token = true
+refresh_token_timeout = 604800
 
 [redis]
 uri = "redis://localhost:6379"
 
-[common]
+[sea-orm-ext-autofull]
 default_user = "system"
+enable_sql_log = true
 
-[sea-orm-ext.tenant]
+[sea-orm-ext-tenant]
 enabled = true
-mode = "table"
-default_tenant_id = 1
+mode = "${TENANT_MODE:table}"
+default_tenant_id = "1876543210000000001"
 header_name = "x-tenant-id"
 ignore_if_missing = true
+database_source = "config"
+
+[[sea-orm-ext-tenant.databases]]
+tenant_id = "1876543210000000001"
+[sea-orm-ext-tenant.databases.database]
+url = "postgres://postgres:root@localhost:5432/template"
+max_connections = 10
+min_connections = 1
+
+[[sea-orm-ext-tenant.databases]]
+tenant_id = "1876543210000000002"
+[sea-orm-ext-tenant.databases.database]
+url = "postgres://postgres:root@localhost:5432/template3"
+max_connections = 10
+min_connections = 1
 
 [storage]
 enabled = false
 provider = "minio"
+
+[common]
+default_user = "system"

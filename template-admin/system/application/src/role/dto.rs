@@ -7,19 +7,19 @@ use common::datetime_format;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateRoleDto {
-    pub parent_id: Option<i64>,
+    pub parent_id: Option<String>,
     pub role_name: String,
     pub role_code: String,
     pub role_sort: Option<i32>,
     pub status: Option<i32>,
     pub remark: Option<String>,
-    pub menu_ids: Option<Vec<i64>>,
+    pub menu_ids: Option<Vec<String>>,
 }
 
 impl CreateRoleDto {
     pub fn into_active_model(self) -> role::ActiveModel {
         role::ActiveModel {
-            parent_id: Set(self.parent_id.unwrap_or(0)),
+            parent_id: Set(self.parent_id.unwrap_or_default()),
             role_name: Set(self.role_name),
             role_code: Set(self.role_code),
             role_sort: Set(self.role_sort.unwrap_or(0)),
@@ -34,14 +34,14 @@ impl CreateRoleDto {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateRoleDto {
     #[serde(default)]
-    pub id: Option<i64>,
-    pub parent_id: Option<i64>,
+    pub id: Option<String>,
+    pub parent_id: Option<String>,
     pub role_name: Option<String>,
     pub role_code: Option<String>,
     pub role_sort: Option<i32>,
     pub status: Option<i32>,
     pub remark: Option<String>,
-    pub menu_ids: Option<Vec<i64>>,
+    pub menu_ids: Option<Vec<String>>,
     #[serde(default)]
     pub version: Option<i32>,
 }
@@ -49,7 +49,7 @@ pub struct UpdateRoleDto {
 impl UpdateRoleDto {
     pub fn into_active_model(self) -> role::ActiveModel {
         let mut model = role::ActiveModel {
-            id: Set(self.id.unwrap_or(0)),
+            id: Set(self.id.unwrap_or_default()),
             version: Set(self.version.unwrap_or(0)),
             ..Default::default()
         };
@@ -66,8 +66,8 @@ impl UpdateRoleDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoleVo {
-    pub id: i64,
-    pub parent_id: i64,
+    pub id: String,
+    pub parent_id: String,
     pub role_name: String,
     pub role_code: String,
     pub role_sort: i32,
@@ -78,7 +78,7 @@ pub struct RoleVo {
     #[serde(with = "datetime_format")]
     pub update_time: DateTime<Utc>,
     pub tenant_id: Option<String>,
-    pub menu_ids: Option<Vec<i64>>,
+    pub menu_ids: Option<Vec<String>>,
     pub children: Option<Vec<RoleVo>>,
 }
 

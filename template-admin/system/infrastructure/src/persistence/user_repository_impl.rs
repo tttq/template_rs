@@ -18,7 +18,7 @@ impl UserRepositoryImpl {
 
 #[async_trait]
 impl UserRepository for UserRepositoryImpl {
-    async fn find_by_id(&self, id: i64) -> Result<Option<user::Model>, AppError> {
+    async fn find_by_id(&self, id: String) -> Result<Option<user::Model>, AppError> {
         Ok(user::Entity::find()
             .filter(user::Column::Id.eq(id))
             .one(&self.db)
@@ -44,7 +44,7 @@ impl UserRepository for UserRepositoryImpl {
         Ok(model.update(&self.db).await?)
     }
 
-    async fn delete(&self, id: i64) -> Result<(), AppError> {
+    async fn delete(&self, id: String) -> Result<(), AppError> {
         let model = user::Entity::find()
             .filter(user::Column::Id.eq(id))
             .one(&self.db)

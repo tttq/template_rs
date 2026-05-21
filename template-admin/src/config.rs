@@ -8,5 +8,8 @@ impl SaTokenConfigurator for SaTokenConfig {
             .exclude("/api/auth/login")
             .exclude("/api/auth/captcha")
             .exclude("/api/auth/register")
+            .exclude("/api/auth/locate")
+            .exclude("/api/auth/refresh-token")
+            .exclude("/api/auth/providers")
     }
 }

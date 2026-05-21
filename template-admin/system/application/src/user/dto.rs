@@ -13,8 +13,8 @@ pub struct CreateUserDto {
     pub email: Option<String>,
     pub phone: Option<String>,
     pub status: Option<i32>,
-    pub dept_id: Option<i64>,
-    pub role_ids: Option<Vec<i64>>,
+    pub dept_id: Option<String>,
+    pub role_ids: Option<Vec<String>>,
 }
 
 impl CreateUserDto {
@@ -37,14 +37,14 @@ impl CreateUserDto {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateUserDto {
     #[serde(default)]
-    pub id: Option<i64>,
+    pub id: Option<String>,
     pub user_name: Option<String>,
     pub nick_name: Option<String>,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub status: Option<i32>,
-    pub dept_id: Option<i64>,
-    pub role_ids: Option<Vec<i64>>,
+    pub dept_id: Option<String>,
+    pub role_ids: Option<Vec<String>>,
     #[serde(default)]
     pub version: Option<i32>,
 }
@@ -52,7 +52,7 @@ pub struct UpdateUserDto {
 impl UpdateUserDto {
     pub fn into_active_model(self) -> user::ActiveModel {
         let mut model = user::ActiveModel {
-            id: Set(self.id.unwrap_or(0)),
+            id: Set(self.id.unwrap_or_default()),
             version: Set(self.version.unwrap_or(0)),
             ..Default::default()
         };
@@ -69,7 +69,7 @@ impl UpdateUserDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserVo {
-    pub id: i64,
+    pub id: String,
     pub user_name: String,
     pub nick_name: Option<String>,
     pub email: Option<String>,
@@ -77,13 +77,13 @@ pub struct UserVo {
     pub avatar: Option<String>,
     pub status: i32,
     pub admin_flag: i32,
-    pub dept_id: Option<i64>,
+    pub dept_id: Option<String>,
     #[serde(with = "datetime_format")]
     pub create_time: DateTime<Utc>,
     #[serde(with = "datetime_format")]
     pub update_time: DateTime<Utc>,
     pub tenant_id: Option<String>,
-    pub role_ids: Option<Vec<i64>>,
+    pub role_ids: Option<Vec<String>>,
 }
 
 impl From<user::Model> for UserVo {

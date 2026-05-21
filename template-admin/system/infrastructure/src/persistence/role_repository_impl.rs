@@ -18,7 +18,7 @@ impl RoleRepositoryImpl {
 
 #[async_trait]
 impl RoleRepository for RoleRepositoryImpl {
-    async fn find_by_id(&self, id: i64) -> Result<Option<role::Model>, AppError> {
+    async fn find_by_id(&self, id: String) -> Result<Option<role::Model>, AppError> {
         Ok(role::Entity::find()
             .filter(role::Column::Id.eq(id))
             .one(&self.db)
@@ -44,7 +44,7 @@ impl RoleRepository for RoleRepositoryImpl {
         Ok(model.update(&self.db).await?)
     }
 
-    async fn delete(&self, id: i64) -> Result<(), AppError> {
+    async fn delete(&self, id: String) -> Result<(), AppError> {
         let model = role::Entity::find()
             .filter(role::Column::Id.eq(id))
             .one(&self.db)

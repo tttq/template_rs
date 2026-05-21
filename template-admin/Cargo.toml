@@ -25,9 +25,9 @@ summer-web = "0.5.0-rc.1"
 summer-sea-orm = { version = "0.5.0-rc.1", features = ["postgres", "rustls"] }
 summer-redis = "0.5.0-rc.1"
 summer-sa-token = { version = "0.5.0-rc.1", features = ["with-summer-redis"] }
-sea-orm-ext = { git = "https://github.com/tttq/sea-orm-ext" }
+#sea-orm-ext = { git = "https://github.com/tttq/sea-orm-ext" ,features = ["summer","summer-web","default"]}
+sea-orm-ext =  { path = "D:\\Projcets\\Rust\\sea-orm-ext", features = ["summer","summer-web","default"]}
 common = { path = "common" }
 system-interface = { path = "system/interface" }
 tokio = { version = "1", features = ["full"] }
-sea-query = "1.0.0-rc.33"
-chrono = { version = "0.4", features = ["serde"] }
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }

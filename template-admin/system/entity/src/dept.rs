@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_generate)]
-    pub id: i64,
-    pub parent_id: i64,
+    pub id: String,
+    pub parent_id: String,
     pub dept_name: String,
     pub dept_sort: i32,
     pub status: i32,

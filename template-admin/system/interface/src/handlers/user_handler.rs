@@ -37,7 +37,7 @@ async fn list_users(
 #[sa_check_permission("user:list")]
 async fn get_user_by_id(
     Component(service): Component<UserAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.get_by_id(id).await {
         Ok(user) => Json(ApiResponse::success(user)),
@@ -61,7 +61,7 @@ async fn create_user(
 #[sa_check_permission("user:edit")]
 async fn update_user(
     Component(service): Component<UserAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(dto): Json<UpdateUserDto>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut dto = dto;
@@ -76,7 +76,7 @@ async fn update_user(
 #[sa_check_permission("user:edit")]
 async fn update_user_status(
     Component(service): Component<UserAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(body): Json<serde_json::Value>,
 ) -> Result<impl IntoResponse, WebError> {
     let status = body.get("status").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
@@ -90,7 +90,7 @@ async fn update_user_status(
 #[sa_check_permission("user:delete")]
 async fn delete_user(
     Component(service): Component<UserAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.delete(id).await {
         Ok(()) => Json(ApiResponse::success("删除成功")),
@@ -102,12 +102,12 @@ async fn delete_user(
 #[sa_check_permission("user:edit")]
 async fn assign_user_roles(
     Component(service): Component<UserAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(body): Json<serde_json::Value>,
 ) -> Result<impl IntoResponse, WebError> {
-    let role_ids: Vec<i64> = body.get("roleIds")
+    let role_ids: Vec<String> = body.get("roleIds")
         .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_i64()).collect())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
         .unwrap_or_default();
     Ok(match service.assign_roles(id, role_ids).await {
         Ok(()) => Json(ApiResponse::success("分配成功")),
@@ -119,7 +119,7 @@ async fn assign_user_roles(
 #[sa_check_permission("user:list")]
 async fn get_user_role_ids(
     Component(service): Component<UserAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.get_role_ids(id).await {
         Ok(ids) => Json(ApiResponse::success(ids)),

@@ -44,7 +44,7 @@ async fn list_dept_tree(
 #[sa_check_permission("dept:list")]
 async fn get_dept_by_id(
     Component(service): Component<DeptAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.get_by_id(id).await {
         Ok(dept) => Json(ApiResponse::success(dept)),
@@ -68,7 +68,7 @@ async fn create_dept(
 #[sa_check_permission("dept:edit")]
 async fn update_dept(
     Component(service): Component<DeptAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(dto): Json<UpdateDeptDto>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut dto = dto;
@@ -83,7 +83,7 @@ async fn update_dept(
 #[sa_check_permission("dept:delete")]
 async fn delete_dept(
     Component(service): Component<DeptAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.delete(id).await {
         Ok(()) => Json(ApiResponse::success("删除成功")),

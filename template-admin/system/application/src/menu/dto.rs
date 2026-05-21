@@ -7,7 +7,7 @@ use common::datetime_format;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateMenuDto {
-    pub parent_id: i64,
+    pub parent_id: String,
     pub menu_name: String,
     pub menu_type: String,
     pub path: Option<String>,
@@ -41,8 +41,8 @@ impl CreateMenuDto {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateMenuDto {
     #[serde(default)]
-    pub id: Option<i64>,
-    pub parent_id: Option<i64>,
+    pub id: Option<String>,
+    pub parent_id: Option<String>,
     pub menu_name: Option<String>,
     pub menu_type: Option<String>,
     pub path: Option<String>,
@@ -59,7 +59,7 @@ pub struct UpdateMenuDto {
 impl UpdateMenuDto {
     pub fn into_active_model(self) -> menu::ActiveModel {
         let mut model = menu::ActiveModel {
-            id: Set(self.id.unwrap_or(0)),
+            id: Set(self.id.unwrap_or_default()),
             version: Set(self.version.unwrap_or(0)),
             ..Default::default()
         };
@@ -80,8 +80,8 @@ impl UpdateMenuDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MenuVo {
-    pub id: i64,
-    pub parent_id: i64,
+    pub id: String,
+    pub parent_id: String,
     pub menu_name: String,
     pub menu_type: String,
     pub path: Option<String>,

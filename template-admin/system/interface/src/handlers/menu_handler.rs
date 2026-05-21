@@ -44,7 +44,7 @@ async fn list_menu_tree(
 #[sa_check_permission("menu:list")]
 async fn get_menu_by_id(
     Component(service): Component<MenuAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.get_by_id(id).await {
         Ok(menu) => Json(ApiResponse::success(menu)),
@@ -68,7 +68,7 @@ async fn create_menu(
 #[sa_check_permission("menu:edit")]
 async fn update_menu(
     Component(service): Component<MenuAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(dto): Json<UpdateMenuDto>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut dto = dto;
@@ -83,7 +83,7 @@ async fn update_menu(
 #[sa_check_permission("menu:delete")]
 async fn delete_menu(
     Component(service): Component<MenuAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.delete(id).await {
         Ok(()) => Json(ApiResponse::success("删除成功")),

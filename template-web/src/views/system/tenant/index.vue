@@ -27,12 +27,17 @@
         :data-source="data"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1100 }"
+        :scroll="{ x: 1300 }"
         size="middle"
         row-key="id"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'mode'">
+            <a-tag :color="record.mode === 'database' ? 'blue' : 'green'">
+              {{ record.mode === 'database' ? '数据库隔离' : '表隔离' }}
+            </a-tag>
+          </template>
           <template v-if="column.key === 'status'">
             <a-switch
               :checked="record.status === 1"
@@ -59,7 +64,7 @@
       v-model:open="modalVisible"
       :title="editId ? '编辑租户' : '新增租户'"
       :confirm-loading="submitLoading"
-      width="600px"
+      width="680px"
       @ok="onSubmit"
     >
       <a-form ref="formRef" :model="form" :rules="formRules" :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
@@ -67,8 +72,41 @@
           <a-input v-model:value="form.tenantName" placeholder="请输入租户名称" />
         </a-form-item>
         <a-form-item label="租户编码" name="tenantCode">
-          <a-input v-model:value="form.tenantCode" :disabled="!!editId" placeholder="请输入租户编码" />
+          <a-input v-model:value="form.tenantCode" :disabled="!!editId" placeholder="请输入租户编码（英文）" />
         </a-form-item>
+        <a-form-item v-if="!editId" label="隔离模式" name="mode">
+          <a-radio-group v-model:value="form.mode">
+            <a-radio value="table">表隔离（共享数据库）</a-radio>
+            <a-radio value="database">数据库隔离（独立数据库）</a-radio>
+          </a-radio-group>
+        </a-form-item>
+
+        <template v-if="form.mode === 'database' && !editId">
+          <a-divider>数据库配置</a-divider>
+          <a-form-item label="数据库类型" name="databaseType">
+            <a-select v-model:value="form.databaseType" placeholder="选择数据库类型">
+              <a-select-option value="postgres">PostgreSQL</a-select-option>
+              <a-select-option value="mysql">MySQL</a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="数据库连接" name="databaseUrl">
+            <a-input v-model:value="form.databaseUrl" placeholder="如：postgres://postgres:root@localhost:5432" />
+          </a-form-item>
+          <a-form-item label="数据库名称" name="databaseName">
+            <a-input v-model:value="form.databaseName" placeholder="如：tenant_acme（将自动创建）" />
+          </a-form-item>
+          <a-divider>管理员账号</a-divider>
+          <a-form-item label="管理员用户名" name="adminUserName">
+            <a-input v-model:value="form.adminUserName" placeholder="请输入管理员用户名" />
+          </a-form-item>
+          <a-form-item label="管理员密码" name="adminPassWord">
+            <a-input-password v-model:value="form.adminPassWord" placeholder="请输入管理员密码" />
+          </a-form-item>
+          <a-form-item label="管理员昵称" name="adminNickName">
+            <a-input v-model:value="form.adminNickName" placeholder="请输入管理员昵称（选填）" />
+          </a-form-item>
+        </template>
+
         <a-form-item label="联系人" name="contactName">
           <a-input v-model:value="form.contactName" placeholder="请输入联系人" />
         </a-form-item>
@@ -118,6 +156,13 @@ const search = reactive({ tenantName: '', tenantCode: '' })
 const form = reactive({
   tenantName: '',
   tenantCode: '',
+  mode: 'table',
+  databaseType: 'postgres',
+  databaseUrl: '',
+  databaseName: '',
+  adminUserName: '',
+  adminPassWord: '',
+  adminNickName: '',
   status: 1,
   contactName: '',
   contactPhone: '',
@@ -128,6 +173,12 @@ const form = reactive({
 const formRules: Record<string, Rule[]> = {
   tenantName: [{ required: true, message: '请输入租户名称', trigger: 'blur' }],
   tenantCode: [{ required: true, message: '请输入租户编码', trigger: 'blur' }],
+  mode: [{ required: true, message: '请选择隔离模式', trigger: 'change' }],
+  databaseType: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
+  databaseUrl: [{ required: true, message: '请输入数据库连接', trigger: 'blur' }],
+  databaseName: [{ required: true, message: '请输入数据库名称', trigger: 'blur' }],
+  adminUserName: [{ required: true, message: '请输入管理员用户名', trigger: 'blur' }],
+  adminPassWord: [{ required: true, message: '请输入管理员密码', trigger: 'blur' }],
   contactEmail: [{ type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }],
   contactPhone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }],
 }
@@ -138,13 +189,14 @@ const statusChecked = computed({
 })
 
 const columns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: '租户名称', dataIndex: 'tenantName', key: 'tenantName', width: 150 },
-  { title: '租户编码', dataIndex: 'tenantCode', key: 'tenantCode', width: 150 },
-  { title: '联系人', dataIndex: 'contactName', key: 'contactName', width: 120 },
-  { title: '联系电话', dataIndex: 'contactPhone', key: 'contactPhone', width: 140 },
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 80, ellipsis: true },
+  { title: '租户名称', dataIndex: 'tenantName', key: 'tenantName', width: 140 },
+  { title: '租户编码', dataIndex: 'tenantCode', key: 'tenantCode', width: 120 },
+  { title: '隔离模式', key: 'mode', width: 110 },
+  { title: '数据库名', dataIndex: 'databaseName', key: 'databaseName', width: 130 },
+  { title: '联系人', dataIndex: 'contactName', key: 'contactName', width: 100 },
   { title: '状态', key: 'status', width: 100 },
-  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'action', width: 150, fixed: 'right' as const },
 ]
 
@@ -197,6 +249,13 @@ function openModal(record?: TenantVo) {
   if (record) {
     form.tenantName = record.tenantName
     form.tenantCode = record.tenantCode
+    form.mode = record.mode || 'table'
+    form.databaseType = record.databaseType || 'postgres'
+    form.databaseUrl = record.databaseUrl || ''
+    form.databaseName = record.databaseName || ''
+    form.adminUserName = ''
+    form.adminPassWord = ''
+    form.adminNickName = ''
     form.status = record.status
     form.contactName = record.contactName || ''
     form.contactPhone = record.contactPhone || ''
@@ -205,6 +264,13 @@ function openModal(record?: TenantVo) {
   } else {
     form.tenantName = ''
     form.tenantCode = ''
+    form.mode = 'table'
+    form.databaseType = 'postgres'
+    form.databaseUrl = ''
+    form.databaseName = ''
+    form.adminUserName = ''
+    form.adminPassWord = ''
+    form.adminNickName = ''
     form.status = 1
     form.contactName = ''
     form.contactPhone = ''
@@ -224,11 +290,45 @@ async function onSubmit() {
   submitLoading.value = true
   try {
     if (editId.value) {
-      await tenantApi.update(editId.value, { ...form, version: 1 })
+      await tenantApi.update(editId.value, {
+        tenantName: form.tenantName,
+        tenantCode: form.tenantCode,
+        status: form.status,
+        contactName: form.contactName,
+        contactPhone: form.contactPhone,
+        contactEmail: form.contactEmail,
+        remark: form.remark,
+        version: 1,
+      })
       message.success('更新成功')
+    } else if (form.mode === 'database') {
+      await tenantApi.createFull({
+        tenantName: form.tenantName,
+        tenantCode: form.tenantCode,
+        databaseType: form.databaseType,
+        databaseUrl: form.databaseUrl,
+        databaseName: form.databaseName,
+        adminUserName: form.adminUserName,
+        adminPassWord: form.adminPassWord,
+        adminNickName: form.adminNickName || undefined,
+        contactName: form.contactName || undefined,
+        contactPhone: form.contactPhone || undefined,
+        contactEmail: form.contactEmail || undefined,
+        remark: form.remark || undefined,
+      })
+      message.success('租户创建成功（数据库隔离模式）')
     } else {
-      await tenantApi.create({ ...form })
-      message.success('新增成功')
+      await tenantApi.create({
+        tenantName: form.tenantName,
+        tenantCode: form.tenantCode,
+        mode: 'table',
+        status: form.status,
+        contactName: form.contactName || undefined,
+        contactPhone: form.contactPhone || undefined,
+        contactEmail: form.contactEmail || undefined,
+        remark: form.remark || undefined,
+      })
+      message.success('租户创建成功（表隔离模式）')
     }
     modalVisible.value = false
     fetchData()

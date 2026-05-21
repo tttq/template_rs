@@ -29,6 +29,8 @@ export default {
     configManage: 'System Config',
     profile: 'Profile',
     login: 'Login',
+    serverMonitor: 'Server Monitor',
+    codeGenerator: 'Code Generator',
   },
   menu: {
     dashboard: 'Dashboard',
@@ -41,6 +43,8 @@ export default {
     dict: 'Dictionaries',
     config: 'Config',
     profile: 'Profile',
+    monitor: 'Server Monitor',
+    generator: 'Code Generator',
   },
   common: {
     user: 'User',
@@ -63,5 +67,8 @@ export default {
     nickName: 'Nickname',
     email: 'Email',
     phone: 'Phone',
+  },
+  login: {
+    rememberMe: 'Remember me',
   },
 }

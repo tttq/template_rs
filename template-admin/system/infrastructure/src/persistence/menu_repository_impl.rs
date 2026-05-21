@@ -18,7 +18,7 @@ impl MenuRepositoryImpl {
 
 #[async_trait]
 impl MenuRepository for MenuRepositoryImpl {
-    async fn find_by_id(&self, id: i64) -> Result<Option<menu::Model>, AppError> {
+    async fn find_by_id(&self, id: String) -> Result<Option<menu::Model>, AppError> {
         Ok(menu::Entity::find()
             .filter(menu::Column::Id.eq(id))
             .one(&self.db)
@@ -32,7 +32,7 @@ impl MenuRepository for MenuRepositoryImpl {
             .await?)
     }
 
-    async fn find_by_parent_id(&self, parent_id: i64) -> Result<Vec<menu::Model>, AppError> {
+    async fn find_by_parent_id(&self, parent_id: String) -> Result<Vec<menu::Model>, AppError> {
         Ok(menu::Entity::find()
             .filter(menu::Column::ParentId.eq(parent_id))
             .order_by_asc(menu::Column::SortOrder)
@@ -48,7 +48,7 @@ impl MenuRepository for MenuRepositoryImpl {
         Ok(model.update(&self.db).await?)
     }
 
-    async fn delete(&self, id: i64) -> Result<(), AppError> {
+    async fn delete(&self, id: String) -> Result<(), AppError> {
         let model = menu::Entity::find()
             .filter(menu::Column::Id.eq(id))
             .one(&self.db)

@@ -31,7 +31,7 @@ impl CreateConfigDto {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateConfigDto {
     #[serde(default)]
-    pub id: Option<i64>,
+    pub id: Option<String>,
     pub config_name: Option<String>,
     pub config_key: Option<String>,
     pub config_value: Option<String>,
@@ -44,7 +44,7 @@ pub struct UpdateConfigDto {
 impl UpdateConfigDto {
     pub fn into_active_model(self) -> config::ActiveModel {
         let mut model = config::ActiveModel {
-            id: Set(self.id.unwrap_or(0)),
+            id: Set(self.id.unwrap_or_default()),
             version: Set(self.version.unwrap_or(0)),
             ..Default::default()
         };
@@ -60,7 +60,7 @@ impl UpdateConfigDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigVo {
-    pub id: i64,
+    pub id: String,
     pub config_name: String,
     pub config_key: String,
     pub config_value: String,

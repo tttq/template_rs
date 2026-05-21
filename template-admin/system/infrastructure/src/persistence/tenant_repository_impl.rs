@@ -18,7 +18,7 @@ impl TenantRepositoryImpl {
 
 #[async_trait]
 impl TenantRepository for TenantRepositoryImpl {
-    async fn find_by_id(&self, id: i64) -> Result<Option<tenant::Model>, AppError> {
+    async fn find_by_id(&self, id: String) -> Result<Option<tenant::Model>, AppError> {
         Ok(tenant::Entity::find()
             .filter(tenant::Column::Id.eq(id))
             .one(&self.db)
@@ -44,7 +44,7 @@ impl TenantRepository for TenantRepositoryImpl {
         Ok(model.update(&self.db).await?)
     }
 
-    async fn delete(&self, id: i64) -> Result<(), AppError> {
+    async fn delete(&self, id: String) -> Result<(), AppError> {
         let model = tenant::Entity::find()
             .filter(tenant::Column::Id.eq(id))
             .one(&self.db)

@@ -1,0 +1,32 @@
+use common::datetime_format;
+use sea_orm::entity::prelude::*;
+use sea_orm_ext::DeriveAutoFill;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Serialize, Deserialize, DeriveEntityModel, DeriveAutoFill)]
+#[sea_orm(table_name = "auth_sys_tenant_user")]
+#[serde(rename_all = "camelCase")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_generate)]
+    pub id: String,
+    pub user_name: String,
+    pub tenant_id: String,
+    pub tenant_code: String,
+    pub user_id: String,
+    pub identity_type: String,
+    pub identity_value: Option<String>,
+    pub status: i32,
+    #[serde(with = "datetime_format")]
+    #[sea_orm_ext(insert)]
+    pub create_time: DateTimeUtc,
+    #[sea_orm_ext(insert)]
+    pub create_by: Option<String>,
+    #[serde(with = "datetime_format")]
+    #[sea_orm_ext(update)]
+    pub update_time: DateTimeUtc,
+    #[sea_orm_ext(update)]
+    pub update_by: Option<String>,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {}

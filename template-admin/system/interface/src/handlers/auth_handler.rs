@@ -5,7 +5,7 @@ use summer_web::error::WebError;
 use summer_web::handler::TypeRouter;
 use summer_sa_token::{sa_check_login, sa_ignore};
 use common::response::ApiResponse;
-use system_application::auth::dto::{LoginDto, RegisterDto};
+use system_application::auth::dto::{LoginDto, RegisterDto, RefreshTokenDto, LocateTenantDto};
 use system_application::auth::service::AuthAppService;
 use system_application::auth::provider::BindDto;
 use system_application::auth::provider_service::AuthProviderService;
@@ -16,8 +16,10 @@ pub fn routes() -> Router {
         .typed_route(do_register)
         .typed_route(do_get_user_info)
         .typed_route(do_logout)
+        .typed_route(do_refresh_token)
         .typed_route(get_providers)
         .typed_route(bind_provider)
+        .typed_route(locate_tenant)
 }
 
 #[post("/login")]
@@ -66,6 +68,18 @@ async fn do_logout(
     })
 }
 
+#[post("/refresh-token")]
+#[sa_ignore]
+async fn do_refresh_token(
+    Component(service): Component<AuthAppService>,
+    Json(dto): Json<RefreshTokenDto>,
+) -> impl IntoResponse {
+    match service.refresh_token(&dto.refresh_token).await {
+        Ok(token) => Json(ApiResponse::success(token)),
+        Err(e) => Json(ApiResponse::error(401, &e.to_string())),
+    }
+}
+
 #[get("/providers")]
 #[sa_ignore]
 async fn get_providers(
@@ -87,4 +101,16 @@ async fn bind_provider(
         Ok(()) => Json(ApiResponse::success("绑定成功")),
         Err(e) => Json(ApiResponse::error(500, &e.to_string())),
     })
+}
+
+#[post("/locate")]
+#[sa_ignore]
+async fn locate_tenant(
+    Component(service): Component<AuthAppService>,
+    Json(dto): Json<LocateTenantDto>,
+) -> impl IntoResponse {
+    match service.locate_tenant(dto).await {
+        Ok(vo) => Json(ApiResponse::success(vo)),
+        Err(e) => Json(ApiResponse::error(401, &e.to_string())),
+    }
 }

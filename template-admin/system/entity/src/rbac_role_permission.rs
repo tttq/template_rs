@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_generate)]
-    pub id: i64,
-    pub role_id: i64,
-    pub permission_id: i64,
-    pub resource_id: i64,
+    pub id: String,
+    pub role_id: String,
+    pub permission_id: String,
+    pub resource_id: String,
     #[sea_orm_ext(TENANT)]
     pub tenant_id: Option<String>,
 }

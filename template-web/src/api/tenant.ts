@@ -4,6 +4,10 @@ export interface TenantVo {
   id: string
   tenantName: string
   tenantCode: string
+  mode: string
+  databaseType?: string
+  databaseUrl?: string
+  databaseName?: string
   status: number
   contactName?: string
   contactPhone?: string
@@ -12,6 +16,21 @@ export interface TenantVo {
   remark?: string
   createTime: string
   updateTime: string
+}
+
+export interface CreateTenantFullParams {
+  tenantName: string
+  tenantCode: string
+  databaseType?: string
+  databaseUrl?: string
+  databaseName?: string
+  contactName?: string
+  contactPhone?: string
+  contactEmail?: string
+  remark?: string
+  adminUserName: string
+  adminPassWord: string
+  adminNickName?: string
 }
 
 export interface PageResult<T> {
@@ -27,6 +46,13 @@ export const tenantApi = {
     request.get<PageResult<TenantVo>>('/system/tenants', { params }),
   getById: (id: string) => request.get<TenantVo>(`/system/tenants/${id}`),
   create: (data: any) => request.post<TenantVo>('/system/tenants', data),
-  update: (id: string, data: any) => request.put<TenantVo>(`/system/tenants/${id}`, data),
-  delete: (id: string) => request.delete(`/system/tenants/${id}`),
+  createFull: (data: CreateTenantFullParams) => request.post<TenantVo>('/system/tenants/create-full', data),
+  update: (id: string, data: any) => request.post<TenantVo>(`/system/tenants/${id}`, data),
+  delete: (id: string) => request.post(`/system/tenants/${id}/delete`),
+  testConnection: (data: { databaseType: string; databaseUrl: string }) =>
+    request.post<boolean>('/system/tenants/test-connection', data),
+  createDatabase: (data: { databaseType: string; databaseUrl: string; databaseName: string }) =>
+    request.post<string>('/system/tenants/create-database', data),
+  initDatabase: (data: { databaseType: string; databaseUrl: string; databaseName: string }) =>
+    request.post<string>('/system/tenants/init-database', data),
 }

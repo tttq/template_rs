@@ -8,9 +8,13 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_generate)]
-    pub id: i64,
+    pub id: String,
     pub tenant_name: String,
     pub tenant_code: String,
+    pub mode: String,
+    pub database_type: Option<String>,
+    pub database_url: Option<String>,
+    pub database_name: Option<String>,
     pub status: i32,
     pub contact_name: Option<String>,
     pub contact_phone: Option<String>,
@@ -41,4 +45,3 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-

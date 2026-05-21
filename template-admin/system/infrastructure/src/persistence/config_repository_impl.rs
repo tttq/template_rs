@@ -18,7 +18,7 @@ impl ConfigRepositoryImpl {
 
 #[async_trait]
 impl ConfigRepository for ConfigRepositoryImpl {
-    async fn find_by_id(&self, id: i64) -> Result<Option<config::Model>, AppError> {
+    async fn find_by_id(&self, id: String) -> Result<Option<config::Model>, AppError> {
         Ok(config::Entity::find()
             .filter(config::Column::Id.eq(id))
             .one(&self.db)
@@ -44,7 +44,7 @@ impl ConfigRepository for ConfigRepositoryImpl {
         Ok(model.update(&self.db).await?)
     }
 
-    async fn delete(&self, id: i64) -> Result<(), AppError> {
+    async fn delete(&self, id: String) -> Result<(), AppError> {
         let model = config::Entity::find()
             .filter(config::Column::Id.eq(id))
             .one(&self.db)

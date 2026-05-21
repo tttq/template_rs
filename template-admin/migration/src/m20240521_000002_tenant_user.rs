@@ -1,0 +1,119 @@
+use sea_orm_migration::prelude::*;
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table(TenantUser::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(TenantUser::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::UserName)
+                            .string_len(100)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::TenantId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::TenantCode)
+                            .string_len(50)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::UserId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::IdentityType)
+                            .string_len(50)
+                            .default("username"),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::IdentityValue)
+                            .string_len(200),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::Status)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::CreateTime)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::CreateBy)
+                            .string(),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::UpdateTime)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new(TenantUser::UpdateBy)
+                            .string(),
+                    )
+                    .index(
+                        Index::create()
+                            .name("idx_tenant_user_name")
+                            .unique()
+                            .col(TenantUser::UserName),
+                    )
+                    .index(
+                        Index::create()
+                            .name("idx_tenant_user_tenant")
+                            .col(TenantUser::TenantId),
+                    )
+                    .index(
+                        Index::create()
+                            .name("idx_tenant_user_identity")
+                            .col(TenantUser::IdentityType)
+                            .col(TenantUser::IdentityValue),
+                    )
+                    .to_owned(),
+            )
+            .await
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(TenantUser::Table).to_owned())
+            .await
+    }
+}
+
+#[derive(Iden)]
+enum TenantUser {
+    Table,
+    Id,
+    UserName,
+    TenantId,
+    TenantCode,
+    UserId,
+    IdentityType,
+    IdentityValue,
+    Status,
+    CreateTime,
+    CreateBy,
+    UpdateTime,
+    UpdateBy,
+}

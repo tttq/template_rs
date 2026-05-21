@@ -7,9 +7,20 @@ edition = "2024"
 system-entity = { path = "../entity" }
 common = { path = "../../common" }
 sea-orm = "2.0.0-rc.38"
+sea-orm-ext =  { path = "D:\\Projcets\\Rust\\sea-orm-ext", features = ["summer","summer-web","default"]}
+sea-query = "1.0.0-rc.33"
 summer = "0.5.0-rc.1"
 summer-sea-orm = "0.5.0-rc.1"
 sa-token-core = "0.1.15"
+summer-sa-token = { version = "0.5.0-rc.1", features = ["with-summer-redis"] }
+summer-redis = "0.5.0-rc.1"
+sa-token-adapter = "0.1.15"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+zip = "2"
+sysinfo = "0.33"
+num_cpus = "1"
+tokio = { version = "1", features = ["time"] }
+log = "0.4"
+reqwest = { version = "0.12", features = ["json"] }

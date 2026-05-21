@@ -3,6 +3,7 @@ pub mod role;
 pub mod menu;
 pub mod dept;
 pub mod tenant;
+pub mod tenant_user;
 pub mod dict_type;
 pub mod dict_item;
 pub mod config;

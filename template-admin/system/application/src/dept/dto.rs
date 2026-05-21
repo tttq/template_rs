@@ -7,7 +7,7 @@ use common::datetime_format;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDeptDto {
-    pub parent_id: i64,
+    pub parent_id: String,
     pub dept_name: String,
     pub dept_sort: Option<i32>,
     pub status: Option<i32>,
@@ -35,8 +35,8 @@ impl CreateDeptDto {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateDeptDto {
     #[serde(default)]
-    pub id: Option<i64>,
-    pub parent_id: Option<i64>,
+    pub id: Option<String>,
+    pub parent_id: Option<String>,
     pub dept_name: Option<String>,
     pub dept_sort: Option<i32>,
     pub status: Option<i32>,
@@ -50,7 +50,7 @@ pub struct UpdateDeptDto {
 impl UpdateDeptDto {
     pub fn into_active_model(self) -> dept::ActiveModel {
         let mut model = dept::ActiveModel {
-            id: Set(self.id.unwrap_or(0)),
+            id: Set(self.id.unwrap_or_default()),
             version: Set(self.version.unwrap_or(0)),
             ..Default::default()
         };
@@ -68,8 +68,8 @@ impl UpdateDeptDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeptVo {
-    pub id: i64,
-    pub parent_id: i64,
+    pub id: String,
+    pub parent_id: String,
     pub dept_name: String,
     pub dept_sort: i32,
     pub status: i32,

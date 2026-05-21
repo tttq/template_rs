@@ -35,7 +35,7 @@ async fn list_configs(
 #[sa_check_permission("config:list")]
 async fn get_config_by_id(
     Component(service): Component<ConfigAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.get_by_id(id).await {
         Ok(config) => Json(ApiResponse::success(config)),
@@ -71,7 +71,7 @@ async fn create_config(
 #[sa_check_permission("config:edit")]
 async fn update_config(
     Component(service): Component<ConfigAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(dto): Json<UpdateConfigDto>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut dto = dto;
@@ -86,7 +86,7 @@ async fn update_config(
 #[sa_check_permission("config:delete")]
 async fn delete_config(
     Component(service): Component<ConfigAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.delete(id).await {
         Ok(()) => Json(ApiResponse::success("删除成功")),

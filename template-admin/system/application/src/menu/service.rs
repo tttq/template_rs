@@ -1,4 +1,5 @@
 use common::error::AppError;
+use common::tenant_db::get_effective_db;
 use summer::plugin::service::Service;
 use summer_sea_orm::DbConn;
 use system_entity::menu;
@@ -15,9 +16,11 @@ pub struct MenuAppService {
 
 impl MenuAppService {
     pub async fn list(&self) -> Result<Vec<MenuVo>, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let items: Vec<menu::Model> = menu::Entity::find()
             .order_by_asc(menu::Column::SortOrder)
-            .all(&self.db)
+            .all(&db)
             .await?;
 
         let vos: Vec<MenuVo> = items.into_iter().map(MenuVo::from).collect();
@@ -25,9 +28,11 @@ impl MenuAppService {
     }
 
     pub async fn list_tree(&self) -> Result<Vec<MenuVo>, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let items: Vec<menu::Model> = menu::Entity::find()
             .order_by_asc(menu::Column::SortOrder)
-            .all(&self.db)
+            .all(&db)
             .await?;
 
         let vos: Vec<MenuVo> = items.into_iter().map(MenuVo::from).collect();
@@ -36,15 +41,15 @@ impl MenuAppService {
 
     fn build_tree(menus: Vec<MenuVo>) -> Vec<MenuVo> {
         let mut result = Vec::new();
-        let mut map: std::collections::HashMap<i64, Vec<MenuVo>> = std::collections::HashMap::new();
+        let mut map: std::collections::HashMap<String, Vec<MenuVo>> = std::collections::HashMap::new();
 
         for menu in menus {
-            map.entry(menu.parent_id).or_default().push(menu);
+            map.entry(menu.parent_id.clone()).or_default().push(menu);
         }
 
-        if let Some(roots) = map.remove(&0) {
+        if let Some(roots) = map.remove("0") {
             for mut root in roots {
-                root.children = Self::build_children(root.id, &mut map);
+                root.children = Self::build_children(root.id.clone(), &mut map);
                 result.push(root);
             }
         }
@@ -53,13 +58,13 @@ impl MenuAppService {
     }
 
     fn build_children(
-        parent_id: i64,
-        map: &mut std::collections::HashMap<i64, Vec<MenuVo>>,
+        parent_id: String,
+        map: &mut std::collections::HashMap<String, Vec<MenuVo>>,
     ) -> Option<Vec<MenuVo>> {
         if let Some(children) = map.remove(&parent_id) {
             let mut result = Vec::new();
             for mut child in children {
-                child.children = Self::build_children(child.id, map);
+                child.children = Self::build_children(child.id.clone(), map);
                 result.push(child);
             }
             Some(result)
@@ -68,10 +73,12 @@ impl MenuAppService {
         }
     }
 
-    pub async fn get_by_id(&self, id: i64) -> Result<MenuVo, AppError> {
+    pub async fn get_by_id(&self, id: String) -> Result<MenuVo, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let model: menu::Model = menu::Entity::find()
-            .filter(menu::Column::Id.eq(id))
-            .one(&self.db)
+            .filter(menu::Column::Id.eq(&id))
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("菜单不存在".to_string()))?;
 
@@ -79,38 +86,44 @@ impl MenuAppService {
     }
 
     pub async fn create(&self, dto: CreateMenuDto) -> Result<MenuVo, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let active_model = dto.into_active_model();
-        let model = active_model.insert(&self.db).await?;
+        let model = active_model.insert(&db).await?;
         Ok(model.into())
     }
 
     pub async fn update(&self, dto: UpdateMenuDto) -> Result<MenuVo, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let active_model = dto.into_active_model();
-        let model = active_model.update(&self.db).await?;
+        let model = active_model.update(&db).await?;
         Ok(model.into())
     }
 
-    pub async fn delete(&self, id: i64) -> Result<(), AppError> {
+    pub async fn delete(&self, id: String) -> Result<(), AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let model: menu::Model = menu::Entity::find()
-            .filter(menu::Column::Id.eq(id))
-            .one(&self.db)
+            .filter(menu::Column::Id.eq(&id))
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("菜单不存在".to_string()))?;
 
         let children: Vec<menu::Model> = menu::Entity::find()
-            .filter(menu::Column::ParentId.eq(id))
-            .all(&self.db)
+            .filter(menu::Column::ParentId.eq(&id))
+            .all(&db)
             .await?;
 
         for child in children {
             let mut am: menu::ActiveModel = child.into();
             am.delete_flag = Set(1);
-            am.update(&self.db).await?;
+            am.update(&db).await?;
         }
 
         let mut am: menu::ActiveModel = model.into();
         am.delete_flag = Set(1);
-        am.update(&self.db).await?;
+        am.update(&db).await?;
         Ok(())
     }
 }

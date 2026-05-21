@@ -17,49 +17,69 @@
         <p class="brand-subtitle">企业级后台管理系统</p>
       </div>
       <a-card class="login-card" :bordered="false">
-        <a-tabs v-model:activeKey="activeTab" centered class="login-tabs">
-          <a-tab-pane key="username" tab="用户名登录">
-            <a-form :model="usernameForm" @finish="handleUsernameLogin" layout="vertical" class="login-form">
-              <a-form-item name="userName" :rules="[{ required: true, message: '请输入用户名' }]">
-                <a-input v-model:value="usernameForm.userName" placeholder="用户名" size="large" allow-clear>
-                  <template #prefix><UserOutlined class="input-icon" /></template>
-                </a-input>
-              </a-form-item>
-              <a-form-item name="passWord" :rules="[{ required: true, message: '请输入密码' }]">
-                <a-input-password v-model:value="usernameForm.passWord" placeholder="密码" size="large">
-                  <template #prefix><LockOutlined class="input-icon" /></template>
-                </a-input-password>
-              </a-form-item>
-              <a-form-item>
-                <a-button type="primary" html-type="submit" :loading="loading" block size="large" class="login-btn">
-                  登 录
-                </a-button>
-              </a-form-item>
-            </a-form>
-          </a-tab-pane>
-          <a-tab-pane key="email" tab="邮箱登录">
-            <a-form :model="emailForm" @finish="handleEmailLogin" layout="vertical" class="login-form">
-              <a-form-item name="email" :rules="[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '请输入有效的邮箱地址' }]">
-                <a-input v-model:value="emailForm.email" placeholder="邮箱地址" size="large" allow-clear>
-                  <template #prefix><MailOutlined class="input-icon" /></template>
-                </a-input>
-              </a-form-item>
-              <a-form-item name="passWord" :rules="[{ required: true, message: '请输入密码' }]">
-                <a-input-password v-model:value="emailForm.passWord" placeholder="密码" size="large">
-                  <template #prefix><LockOutlined class="input-icon" /></template>
-                </a-input-password>
-              </a-form-item>
-              <a-form-item>
-                <a-button type="primary" html-type="submit" :loading="loading" block size="large" class="login-btn">
-                  登 录
-                </a-button>
-              </a-form-item>
-            </a-form>
-          </a-tab-pane>
-        </a-tabs>
-        <div class="login-footer">
-          <span class="footer-text">还没有账号？</span>
-          <a class="footer-link" @click="openRegister">注册账号</a>
+        <div v-if="loginStep === 'locate'" class="login-step-locate">
+          <div class="step-indicator">
+            <span class="step-number active">1</span>
+            <span class="step-line"></span>
+            <span class="step-number">2</span>
+          </div>
+          <div class="step-title">步骤 1/2：输入用户名</div>
+          <a-form :model="locateForm" @finish="handleLocateTenant" layout="vertical" class="login-form">
+            <a-form-item name="userName" :rules="[{ required: true, message: '请输入用户名' }]">
+              <a-input v-model:value="locateForm.userName" placeholder="请输入用户名" size="large" allow-clear>
+                <template #prefix><UserOutlined class="input-icon" /></template>
+              </a-input>
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" html-type="submit" :loading="locateLoading" block size="large" class="login-btn">
+                下一步
+              </a-button>
+            </a-form-item>
+          </a-form>
+          <div class="login-footer">
+            <span class="footer-text">还没有账号？</span>
+            <a class="footer-link" @click="openRegister">注册账号</a>
+          </div>
+        </div>
+
+        <div v-else class="login-step-login">
+          <div class="step-indicator">
+            <span class="step-number">1</span>
+            <span class="step-line active"></span>
+            <span class="step-number active">2</span>
+          </div>
+          <div class="step-title">步骤 2/2：输入密码</div>
+          
+          <div v-if="tenantInfo" class="tenant-info">
+            <a-tag color="blue">{{ tenantInfo.tenantName }}</a-tag>
+            <span class="tenant-hint">欢迎回来，{{ tenantInfo.userName }}</span>
+          </div>
+
+          <a-form :model="loginForm" @finish="handleLogin" layout="vertical" class="login-form">
+            <a-form-item>
+              <a-input :value="tenantInfo?.userName" disabled placeholder="用户名" size="large">
+                <template #prefix><UserOutlined class="input-icon" /></template>
+              </a-input>
+            </a-form-item>
+            <a-form-item name="passWord" :rules="[{ required: true, message: '请输入密码' }]">
+              <a-input-password v-model:value="loginForm.passWord" placeholder="请输入密码" size="large">
+                <template #prefix><LockOutlined class="input-icon" /></template>
+              </a-input-password>
+            </a-form-item>
+            <a-form-item>
+              <div class="login-options">
+                <a-checkbox v-model:checked="rememberMe">{{ t('login.rememberMe') }}</a-checkbox>
+              </div>
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" html-type="submit" :loading="loginLoading" block size="large" class="login-btn">
+                登 录
+              </a-button>
+            </a-form-item>
+          </a-form>
+          <div class="login-actions">
+            <a class="back-link" @click="backToLocate">返回上一步</a>
+          </div>
         </div>
       </a-card>
     </div>
@@ -79,6 +99,11 @@
             <a-form-item name="userName" :rules="[{ required: true, message: '请输入用户名' }]">
               <a-input v-model:value="usernameRegisterForm.userName" placeholder="用户名" size="large" allow-clear>
                 <template #prefix><UserOutlined class="input-icon" /></template>
+              </a-input>
+            </a-form-item>
+            <a-form-item name="tenantCode" :rules="[{ required: true, message: '请输入租户编码' }]">
+              <a-input v-model:value="usernameRegisterForm.tenantCode" placeholder="租户编码" size="large" allow-clear>
+                <template #prefix><BankOutlined class="input-icon" /></template>
               </a-input>
             </a-form-item>
             <a-form-item name="passWord" :rules="[{ required: true, message: '请输入密码' }, { min: 6, message: '密码至少6位' }]">
@@ -108,6 +133,11 @@
             <a-form-item name="email" :rules="[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '请输入有效的邮箱地址' }]">
               <a-input v-model:value="emailRegisterForm.email" placeholder="邮箱地址" size="large" allow-clear>
                 <template #prefix><MailOutlined class="input-icon" /></template>
+              </a-input>
+            </a-form-item>
+            <a-form-item name="tenantCode" :rules="[{ required: true, message: '请输入租户编码' }]">
+              <a-input v-model:value="emailRegisterForm.tenantCode" placeholder="租户编码" size="large" allow-clear>
+                <template #prefix><BankOutlined class="input-icon" /></template>
               </a-input>
             </a-form-item>
             <a-form-item name="passWord" :rules="[{ required: true, message: '请输入密码' }, { min: 6, message: '密码至少6位' }]">
@@ -145,34 +175,40 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons-vue'
+import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, BankOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { authApi } from '@/api/auth'
-import type { LoginParams, RegisterParams } from '@/api/auth'
+import type { LoginParams, RegisterParams, LocateTenantParams, LocateTenantResult } from '@/api/auth'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-const loading = ref(false)
+const loginStep = ref<'locate' | 'login'>('locate')
+const locateLoading = ref(false)
+const loginLoading = ref(false)
 const registerLoading = ref(false)
-const activeTab = ref('username')
 const registerVisible = ref(false)
 const registerTab = ref('username')
+const rememberMe = ref(false)
 
-const usernameForm = reactive({
-  userName: 'admin',
-  passWord: 'admin123',
+const tenantInfo = ref<LocateTenantResult | null>(null)
+
+const locateForm = reactive({
+  userName: '',
 })
 
-const emailForm = reactive({
-  email: '',
+const loginForm = reactive({
   passWord: '',
 })
 
 const usernameRegisterForm = reactive({
   userName: '',
+  tenantCode: '',
   passWord: '',
   nickName: '',
   phone: '',
@@ -180,42 +216,54 @@ const usernameRegisterForm = reactive({
 
 const emailRegisterForm = reactive({
   email: '',
+  tenantCode: '',
   passWord: '',
   userName: '',
   nickName: '',
   phone: '',
 })
 
-async function handleUsernameLogin() {
-  loading.value = true
+async function handleLocateTenant() {
+  locateLoading.value = true
   try {
-    const params: LoginParams = {
-      userName: usernameForm.userName,
-      passWord: usernameForm.passWord,
-      loginType: 'username',
+    const params: LocateTenantParams = {
+      userName: locateForm.userName,
     }
-    await userStore.login(params)
-    const redirect = (route.query.redirect as string) || '/'
-    router.push(redirect)
+    const res = await authApi.locate(params)
+    tenantInfo.value = res
+    loginStep.value = 'login'
+  } catch (_error: any) {
+    tenantInfo.value = { tenantName: '', tenantCode: '', userName: locateForm.userName, loginType: 'username' }
+    loginStep.value = 'login'
   } finally {
-    loading.value = false
+    locateLoading.value = false
   }
 }
 
-async function handleEmailLogin() {
-  loading.value = true
+async function handleLogin() {
+  loginLoading.value = true
   try {
     const params: LoginParams = {
-      email: emailForm.email,
-      passWord: emailForm.passWord,
-      loginType: 'email',
+      userName: tenantInfo.value?.userName,
+      passWord: loginForm.passWord,
+      tenantCode: tenantInfo.value?.tenantCode,
+      loginType: 'password',
+      rememberMe: rememberMe.value,
     }
     await userStore.login(params)
     const redirect = (route.query.redirect as string) || '/'
     router.push(redirect)
+  } catch (error: any) {
+    message.error(error.response?.data?.message || '登录失败')
   } finally {
-    loading.value = false
+    loginLoading.value = false
   }
+}
+
+function backToLocate() {
+  loginStep.value = 'locate'
+  tenantInfo.value = null
+  loginForm.passWord = ''
 }
 
 function openRegister() {
@@ -230,6 +278,7 @@ async function handleRegister() {
     const params: RegisterParams = isUsername
       ? {
           userName: usernameRegisterForm.userName,
+          tenantCode: usernameRegisterForm.tenantCode,
           passWord: usernameRegisterForm.passWord,
           nickName: usernameRegisterForm.nickName || undefined,
           phone: usernameRegisterForm.phone || undefined,
@@ -237,6 +286,7 @@ async function handleRegister() {
         }
       : {
           userName: emailRegisterForm.userName,
+          tenantCode: emailRegisterForm.tenantCode,
           passWord: emailRegisterForm.passWord,
           nickName: emailRegisterForm.nickName || undefined,
           phone: emailRegisterForm.phone || undefined,
@@ -246,7 +296,6 @@ async function handleRegister() {
     await authApi.register(params)
     message.success('注册成功，请登录')
     registerVisible.value = false
-    activeTab.value = isUsername ? 'username' : 'email'
     resetRegisterForms()
   } finally {
     registerLoading.value = false
@@ -255,10 +304,12 @@ async function handleRegister() {
 
 function resetRegisterForms() {
   usernameRegisterForm.userName = ''
+  usernameRegisterForm.tenantCode = ''
   usernameRegisterForm.passWord = ''
   usernameRegisterForm.nickName = ''
   usernameRegisterForm.phone = ''
   emailRegisterForm.email = ''
+  emailRegisterForm.tenantCode = ''
   emailRegisterForm.passWord = ''
   emailRegisterForm.userName = ''
   emailRegisterForm.nickName = ''
@@ -378,20 +429,53 @@ function resetRegisterForms() {
 }
 
 .login-card :deep(.ant-card-body) {
-  padding: 32px 32px 24px;
+  padding: 32px;
 }
 
-.login-tabs :deep(.ant-tabs-nav) {
-  margin-bottom: 24px;
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
 }
 
-.login-tabs :deep(.ant-tabs-tab) {
-  font-size: 15px;
-  padding: 8px 20px;
-}
-
-.login-tabs :deep(.ant-tabs-tab-active .ant-tabs-tab-btn) {
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #999;
+  font-size: 14px;
   font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.step-number.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.step-line {
+  width: 48px;
+  height: 2px;
+  margin: 0 8px;
+  background: #f0f0f0;
+  transition: all 0.3s ease;
+}
+
+.step-line.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.step-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 24px;
 }
 
 .login-form {
@@ -404,6 +488,17 @@ function resetRegisterForms() {
 
 .login-form :deep(.ant-form-item:last-child) {
   margin-bottom: 0;
+}
+
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.login-options :deep(.ant-checkbox-wrapper) {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
 }
 
 .login-form :deep(.ant-input-affix-wrapper),
@@ -466,6 +561,40 @@ function resetRegisterForms() {
 
 .footer-link:hover {
   color: #764ba2;
+}
+
+.login-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.back-link {
+  color: #667eea;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #764ba2;
+}
+
+.tenant-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: rgba(102, 126, 234, 0.08);
+  border-radius: 8px;
+}
+
+.tenant-hint {
+  color: #666;
+  font-size: 14px;
 }
 
 .register-tabs :deep(.ant-tabs-nav) {

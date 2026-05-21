@@ -18,7 +18,7 @@ impl RoleMenuRepositoryImpl {
 
 #[async_trait]
 impl RoleMenuRepository for RoleMenuRepositoryImpl {
-    async fn find_by_role_id(&self, role_id: i64) -> Result<Vec<role_menu::Model>, AppError> {
+    async fn find_by_role_id(&self, role_id: String) -> Result<Vec<role_menu::Model>, AppError> {
         Ok(role_menu::Entity::find()
             .filter(role_menu::Column::RoleId.eq(role_id))
             .all(&self.db)
@@ -29,7 +29,7 @@ impl RoleMenuRepository for RoleMenuRepositoryImpl {
         Ok(model.insert(&self.db).await?)
     }
 
-    async fn delete_by_role_id(&self, role_id: i64) -> Result<(), AppError> {
+    async fn delete_by_role_id(&self, role_id: String) -> Result<(), AppError> {
         role_menu::Entity::delete_many()
             .filter(role_menu::Column::RoleId.eq(role_id))
             .exec(&self.db)

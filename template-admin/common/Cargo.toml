@@ -4,15 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-sea-orm = "2.0.0-rc.38"
-sea-orm-ext = { git = "https://github.com/tttq/sea-orm-ext" }
+sea-orm = "2.0.0-rc.37"
+sea-orm-ext =  { path = "D:\\Projcets\\Rust\\sea-orm-ext", features = ["summer","summer-web","default"]}
 sea-query = "1.0.0-rc.33"
-summer = "0.5.0-rc.1"
 summer-sa-token = "0.5.0-rc.1"
 sa-token-core = "0.1.15"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["rt"] }
-async-trait = "0.1"
-tracing = "0.1"

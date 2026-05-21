@@ -53,7 +53,7 @@ async fn create_dict_type(
 #[sa_check_permission("dict:edit")]
 async fn update_dict_type(
     Component(service): Component<DictTypeAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(dto): Json<UpdateDictTypeDto>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut dto = dto;
@@ -68,7 +68,7 @@ async fn update_dict_type(
 #[sa_check_permission("dict:delete")]
 async fn delete_dict_type(
     Component(service): Component<DictTypeAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.delete(id).await {
         Ok(()) => Json(ApiResponse::success("删除成功")),
@@ -92,7 +92,7 @@ async fn list_dict_items(
 #[sa_check_permission("dict:list")]
 async fn list_items_by_type_id(
     Component(service): Component<DictItemAppService>,
-    Path(type_id): Path<i64>,
+    Path(type_id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.get_by_dict_type_id(type_id).await {
         Ok(result) => Json(ApiResponse::success(result)),
@@ -128,7 +128,7 @@ async fn create_dict_item(
 #[sa_check_permission("dict:edit")]
 async fn update_dict_item(
     Component(service): Component<DictItemAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(dto): Json<UpdateDictItemDto>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut dto = dto;
@@ -143,7 +143,7 @@ async fn update_dict_item(
 #[sa_check_permission("dict:delete")]
 async fn delete_dict_item(
     Component(service): Component<DictItemAppService>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.delete(id).await {
         Ok(()) => Json(ApiResponse::success("删除成功")),

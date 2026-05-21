@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_generate)]
-    pub id: i64,
-    pub user_id: i64,
-    pub role_id: i64,
+    pub id: String,
+    pub user_id: String,
+    pub role_id: String,
     #[serde(with = "datetime_format")]
     #[sea_orm_ext(insert)]
     pub create_time: DateTimeUtc,

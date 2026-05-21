@@ -1,5 +1,6 @@
 use common::error::AppError;
 use common::pagination::{PageQuery, PageResult};
+use common::tenant_db::get_effective_db;
 use summer::plugin::service::Service;
 use summer_sea_orm::DbConn;
 use system_entity::dict_type;
@@ -16,8 +17,10 @@ pub struct DictTypeAppService {
 
 impl DictTypeAppService {
     pub async fn list(&self, query: PageQuery) -> Result<PageResult<DictTypeVo>, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let paginator = dict_type::Entity::find()
-            .paginate(&self.db, query.page_size);
+            .paginate(&db, query.page_size);
 
         let total = paginator.num_items().await?;
         let items: Vec<dict_type::Model> = paginator.fetch_page(query.page - 1).await?;
@@ -26,10 +29,12 @@ impl DictTypeAppService {
         Ok(PageResult::new(vos, total, query.page, query.page_size))
     }
 
-    pub async fn get_by_id(&self, id: i64) -> Result<DictTypeVo, AppError> {
+    pub async fn get_by_id(&self, id: String) -> Result<DictTypeVo, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let model: dict_type::Model = dict_type::Entity::find()
-            .filter(dict_type::Column::Id.eq(id))
-            .one(&self.db)
+            .filter(dict_type::Column::Id.eq(&id))
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("字典类型不存在".to_string()))?;
 
@@ -37,9 +42,11 @@ impl DictTypeAppService {
     }
 
     pub async fn create(&self, dto: CreateDictTypeDto) -> Result<DictTypeVo, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let existing: Option<dict_type::Model> = dict_type::Entity::find()
             .filter(dict_type::Column::DictType.eq(&dto.dict_type))
-            .one(&self.db)
+            .one(&db)
             .await?;
 
         if existing.is_some() {
@@ -47,26 +54,30 @@ impl DictTypeAppService {
         }
 
         let active_model = dto.into_active_model();
-        let model = active_model.insert(&self.db).await?;
+        let model = active_model.insert(&db).await?;
         Ok(model.into())
     }
 
     pub async fn update(&self, dto: UpdateDictTypeDto) -> Result<DictTypeVo, AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let active_model = dto.into_active_model();
-        let model = active_model.update(&self.db).await?;
+        let model = active_model.update(&db).await?;
         Ok(model.into())
     }
 
-    pub async fn delete(&self, id: i64) -> Result<(), AppError> {
+    pub async fn delete(&self, id: String) -> Result<(), AppError> {
+        let db = get_effective_db(&self.db).await?;
+
         let model: dict_type::Model = dict_type::Entity::find()
-            .filter(dict_type::Column::Id.eq(id))
-            .one(&self.db)
+            .filter(dict_type::Column::Id.eq(&id))
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("字典类型不存在".to_string()))?;
 
         let mut am: dict_type::ActiveModel = model.into();
         am.delete_flag = Set(1);
-        am.update(&self.db).await?;
+        am.update(&db).await?;
         Ok(())
     }
 }

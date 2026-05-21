@@ -7,6 +7,8 @@ pub mod tenant_handler;
 pub mod dict_handler;
 pub mod config_handler;
 pub mod file_handler;
+pub mod monitor_handler;
+pub mod generator_handler;
 
 use summer_web::Router;
 
@@ -24,4 +26,6 @@ pub fn system_routes() -> Router {
         .merge(dict_handler::routes())
         .merge(config_handler::routes())
         .merge(file_handler::routes())
+        .merge(monitor_handler::routes())
+        .merge(generator_handler::routes())
 }

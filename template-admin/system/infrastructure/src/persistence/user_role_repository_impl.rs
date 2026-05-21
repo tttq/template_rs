@@ -18,14 +18,14 @@ impl UserRoleRepositoryImpl {
 
 #[async_trait]
 impl UserRoleRepository for UserRoleRepositoryImpl {
-    async fn find_by_user_id(&self, user_id: i64) -> Result<Vec<user_role::Model>, AppError> {
+    async fn find_by_user_id(&self, user_id: String) -> Result<Vec<user_role::Model>, AppError> {
         Ok(user_role::Entity::find()
             .filter(user_role::Column::UserId.eq(user_id))
             .all(&self.db)
             .await?)
     }
 
-    async fn find_by_role_id(&self, role_id: i64) -> Result<Vec<user_role::Model>, AppError> {
+    async fn find_by_role_id(&self, role_id: String) -> Result<Vec<user_role::Model>, AppError> {
         Ok(user_role::Entity::find()
             .filter(user_role::Column::RoleId.eq(role_id))
             .all(&self.db)
@@ -36,7 +36,7 @@ impl UserRoleRepository for UserRoleRepositoryImpl {
         Ok(model.insert(&self.db).await?)
     }
 
-    async fn delete_by_user_id(&self, user_id: i64) -> Result<(), AppError> {
+    async fn delete_by_user_id(&self, user_id: String) -> Result<(), AppError> {
         user_role::Entity::delete_many()
             .filter(user_role::Column::UserId.eq(user_id))
             .exec(&self.db)

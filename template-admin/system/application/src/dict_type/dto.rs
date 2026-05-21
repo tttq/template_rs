@@ -29,7 +29,7 @@ impl CreateDictTypeDto {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateDictTypeDto {
     #[serde(default)]
-    pub id: Option<i64>,
+    pub id: Option<String>,
     pub dict_name: Option<String>,
     pub dict_type: Option<String>,
     pub status: Option<i32>,
@@ -41,7 +41,7 @@ pub struct UpdateDictTypeDto {
 impl UpdateDictTypeDto {
     pub fn into_active_model(self) -> dict_type::ActiveModel {
         let mut model = dict_type::ActiveModel {
-            id: Set(self.id.unwrap_or(0)),
+            id: Set(self.id.unwrap_or_default()),
             version: Set(self.version.unwrap_or(0)),
             ..Default::default()
         };
@@ -56,7 +56,7 @@ impl UpdateDictTypeDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DictTypeVo {
-    pub id: i64,
+    pub id: String,
     pub dict_name: String,
     pub dict_type: String,
     pub status: i32,

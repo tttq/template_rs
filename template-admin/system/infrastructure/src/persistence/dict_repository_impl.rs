@@ -18,7 +18,7 @@ impl DictTypeRepositoryImpl {
 
 #[async_trait]
 impl DictTypeRepository for DictTypeRepositoryImpl {
-    async fn find_by_id(&self, id: i64) -> Result<Option<dict_type::Model>, AppError> {
+    async fn find_by_id(&self, id: String) -> Result<Option<dict_type::Model>, AppError> {
         Ok(dict_type::Entity::find()
             .filter(dict_type::Column::Id.eq(id))
             .one(&self.db)
@@ -44,7 +44,7 @@ impl DictTypeRepository for DictTypeRepositoryImpl {
         Ok(model.update(&self.db).await?)
     }
 
-    async fn delete(&self, id: i64) -> Result<(), AppError> {
+    async fn delete(&self, id: String) -> Result<(), AppError> {
         let model = dict_type::Entity::find()
             .filter(dict_type::Column::Id.eq(id))
             .one(&self.db)
@@ -67,14 +67,14 @@ impl DictItemRepositoryImpl {
 
 #[async_trait]
 impl DictItemRepository for DictItemRepositoryImpl {
-    async fn find_by_id(&self, id: i64) -> Result<Option<dict_item::Model>, AppError> {
+    async fn find_by_id(&self, id: String) -> Result<Option<dict_item::Model>, AppError> {
         Ok(dict_item::Entity::find()
             .filter(dict_item::Column::Id.eq(id))
             .one(&self.db)
             .await?)
     }
 
-    async fn find_by_dict_type_id(&self, dict_type_id: i64) -> Result<Vec<dict_item::Model>, AppError> {
+    async fn find_by_dict_type_id(&self, dict_type_id: String) -> Result<Vec<dict_item::Model>, AppError> {
         Ok(dict_item::Entity::find()
             .filter(dict_item::Column::DictTypeId.eq(dict_type_id))
             .order_by_asc(dict_item::Column::SortOrder)
@@ -94,7 +94,7 @@ impl DictItemRepository for DictItemRepositoryImpl {
         Ok(model.update(&self.db).await?)
     }
 
-    async fn delete(&self, id: i64) -> Result<(), AppError> {
+    async fn delete(&self, id: String) -> Result<(), AppError> {
         let model = dict_item::Entity::find()
             .filter(dict_item::Column::Id.eq(id))
             .one(&self.db)

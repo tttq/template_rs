@@ -9,6 +9,8 @@ pub struct CurrentUser {
     pub user_name: String,
     pub nick_name: Option<String>,
     pub tenant_id: Option<String>,
+    pub tenant_code: Option<String>,
+    pub tenant_mode: Option<String>,
 }
 
 fn get_extra_data() -> Option<Value> {
@@ -36,16 +38,30 @@ pub fn get_current_tenant_id() -> Option<String> {
     data.get("tenantId")?.as_str().map(|s: &str| s.to_string())
 }
 
+pub fn get_current_tenant_code() -> Option<String> {
+    let data = get_extra_data()?;
+    data.get("tenantCode")?.as_str().map(|s: &str| s.to_string())
+}
+
+pub fn get_current_tenant_mode() -> Option<String> {
+    let data = get_extra_data()?;
+    data.get("tenantMode")?.as_str().map(|s: &str| s.to_string())
+}
+
 pub fn get_current_user() -> Option<CurrentUser> {
     let id = get_current_user_id()?;
     let user_name = get_current_user_name().unwrap_or_default();
     let nick_name = get_current_user_nick_name();
     let tenant_id = get_current_tenant_id();
+    let tenant_code = get_current_tenant_code();
+    let tenant_mode = get_current_tenant_mode();
     Some(CurrentUser {
         id,
         user_name,
         nick_name,
         tenant_id,
+        tenant_code,
+        tenant_mode,
     })
 }
 

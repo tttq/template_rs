@@ -9,6 +9,10 @@ use common::datetime_format;
 pub struct CreateTenantDto {
     pub tenant_name: String,
     pub tenant_code: String,
+    pub mode: String,
+    pub database_type: Option<String>,
+    pub database_url: Option<String>,
+    pub database_name: Option<String>,
     pub status: Option<i32>,
     pub contact_name: Option<String>,
     pub contact_phone: Option<String>,
@@ -23,6 +27,10 @@ impl CreateTenantDto {
         tenant::ActiveModel {
             tenant_name: Set(self.tenant_name),
             tenant_code: Set(self.tenant_code),
+            mode: Set(self.mode),
+            database_type: Set(self.database_type),
+            database_url: Set(self.database_url),
+            database_name: Set(self.database_name),
             status: Set(self.status.unwrap_or(1)),
             contact_name: Set(self.contact_name),
             contact_phone: Set(self.contact_phone),
@@ -36,11 +44,34 @@ impl CreateTenantDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CreateTenantFullDto {
+    pub tenant_name: String,
+    pub tenant_code: String,
+    pub database_type: Option<String>,
+    pub database_url: Option<String>,
+    pub database_name: Option<String>,
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub contact_email: Option<String>,
+    #[serde(with = "datetime_format::option")]
+    pub expire_time: Option<DateTime<Utc>>,
+    pub remark: Option<String>,
+    pub admin_user_name: String,
+    pub admin_pass_word: String,
+    pub admin_nick_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTenantDto {
     #[serde(default)]
-    pub id: Option<i64>,
+    pub id: Option<String>,
     pub tenant_name: Option<String>,
     pub tenant_code: Option<String>,
+    pub mode: Option<String>,
+    pub database_type: Option<String>,
+    pub database_url: Option<String>,
+    pub database_name: Option<String>,
     pub status: Option<i32>,
     pub contact_name: Option<String>,
     pub contact_phone: Option<String>,
@@ -55,12 +86,16 @@ pub struct UpdateTenantDto {
 impl UpdateTenantDto {
     pub fn into_active_model(self) -> tenant::ActiveModel {
         let mut model = tenant::ActiveModel {
-            id: Set(self.id.unwrap_or(0)),
+            id: Set(self.id.unwrap_or_default()),
             version: Set(self.version.unwrap_or(0)),
             ..Default::default()
         };
         if let Some(v) = self.tenant_name { model.tenant_name = Set(v); }
         if let Some(v) = self.tenant_code { model.tenant_code = Set(v); }
+        if let Some(v) = self.mode { model.mode = Set(v); }
+        if let Some(v) = self.database_type { model.database_type = Set(Some(v)); }
+        if let Some(v) = self.database_url { model.database_url = Set(Some(v)); }
+        if let Some(v) = self.database_name { model.database_name = Set(Some(v)); }
         if let Some(v) = self.status { model.status = Set(v); }
         if let Some(v) = self.contact_name { model.contact_name = Set(Some(v)); }
         if let Some(v) = self.contact_phone { model.contact_phone = Set(Some(v)); }
@@ -74,9 +109,13 @@ impl UpdateTenantDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TenantVo {
-    pub id: i64,
+    pub id: String,
     pub tenant_name: String,
     pub tenant_code: String,
+    pub mode: String,
+    pub database_type: Option<String>,
+    pub database_url: Option<String>,
+    pub database_name: Option<String>,
     pub status: i32,
     pub contact_name: Option<String>,
     pub contact_phone: Option<String>,
@@ -96,6 +135,10 @@ impl From<tenant::Model> for TenantVo {
             id: m.id,
             tenant_name: m.tenant_name,
             tenant_code: m.tenant_code,
+            mode: m.mode,
+            database_type: m.database_type,
+            database_url: m.database_url,
+            database_name: m.database_name,
             status: m.status,
             contact_name: m.contact_name,
             contact_phone: m.contact_phone,
@@ -106,4 +149,27 @@ impl From<tenant::Model> for TenantVo {
             update_time: m.update_time,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestConnectionDto {
+    pub database_type: String,
+    pub database_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateDatabaseDto {
+    pub database_type: String,
+    pub database_url: String,
+    pub database_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InitDatabaseDto {
+    pub database_type: String,
+    pub database_url: String,
+    pub database_name: String,
 }
