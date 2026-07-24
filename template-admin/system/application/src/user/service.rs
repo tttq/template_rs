@@ -3,12 +3,12 @@ use common::pagination::{PageQuery, PageResult};
 use common::tenant_db::get_effective_db;
 use common::user::get_current_tenant_mode;
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use system_entity::{user, user_role, tenant_user, tenant};
 use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, PaginatorTrait};
 use sea_orm::ActiveValue::Set;
 use sea_orm::prelude::*;
-use sea_orm_ext::TenantIgnoreGuard;
+use sea_orm_ext::{ignore_tenant, TenantIgnoreGuard};
 
 use super::dto::{CreateUserDto, UpdateUserDto, UserVo};
 
@@ -66,19 +66,16 @@ impl UserAppService {
         }
 
         let role_ids = dto.role_ids.clone();
-        let active_model = dto.into_active_model();
+        let active_model = dto.into_active_model()?;
         let model = active_model.insert(&db).await?;
 
         if let Some(ids) = role_ids {
-            for role_id in ids {
-                user_role::ActiveModel {
-                    user_id: Set(model.id.clone()),
-                    role_id: Set(role_id),
-                    ..Default::default()
-                }
-                .insert(&db)
-                .await?;
-            }
+            let models: Vec<user_role::ActiveModel> = ids.into_iter().map(|role_id| user_role::ActiveModel {
+                user_id: Set(model.id.clone()),
+                role_id: Set(role_id),
+                ..Default::default()
+            }).collect();
+            user_role::Entity::insert_many_with_fill(models, &db).await?;
         }
 
         self.sync_tenant_user_index(&model).await?;
@@ -101,15 +98,12 @@ impl UserAppService {
                 .exec(&db)
                 .await?;
 
-            for role_id in ids {
-                user_role::ActiveModel {
-                    user_id: Set(model.id.clone()),
-                    role_id: Set(role_id),
-                    ..Default::default()
-                }
-                .insert(&db)
-                .await?;
-            }
+            let models: Vec<user_role::ActiveModel> = ids.into_iter().map(|role_id| user_role::ActiveModel {
+                user_id: Set(model.id.clone()),
+                role_id: Set(role_id),
+                ..Default::default()
+            }).collect();
+            user_role::Entity::insert_many_with_fill(models, &db).await?;
         }
 
         self.sync_tenant_user_index(&model).await?;
@@ -179,15 +173,12 @@ impl UserAppService {
             .exec(&db)
             .await?;
 
-        for role_id in role_ids {
-            user_role::ActiveModel {
-                user_id: Set(user_id.clone()),
-                role_id: Set(role_id),
-                ..Default::default()
-            }
-            .insert(&db)
-            .await?;
-        }
+        let models: Vec<user_role::ActiveModel> = role_ids.into_iter().map(|role_id| user_role::ActiveModel {
+            user_id: Set(user_id.clone()),
+            role_id: Set(role_id),
+            ..Default::default()
+        }).collect();
+        user_role::Entity::insert_many_with_fill(models, &db).await?;
 
         Ok(())
     }
@@ -203,6 +194,7 @@ impl UserAppService {
         Ok(roles.into_iter().map(|r| r.role_id).collect())
     }
 
+    #[ignore_tenant]
     async fn sync_tenant_user_index(&self, user_model: &user::Model) -> Result<(), AppError> {
         let tenant_mode = get_current_tenant_mode();
         if tenant_mode.as_deref() != Some("database") {
@@ -213,8 +205,6 @@ impl UserAppService {
             Some(id) => id,
             None => return Ok(()),
         };
-
-        let _guard = TenantIgnoreGuard::new();
 
         let tenant_model = tenant::Entity::find()
             .filter(tenant::Column::Id.eq(&tenant_id))
@@ -251,6 +241,7 @@ impl UserAppService {
         Ok(())
     }
 
+    #[ignore_tenant]
     async fn remove_tenant_user_index(&self, user_id: &str) -> Result<(), AppError> {
         let tenant_mode = get_current_tenant_mode();
         if tenant_mode.as_deref() != Some("database") {
@@ -261,8 +252,6 @@ impl UserAppService {
             Some(id) => id,
             None => return Ok(()),
         };
-
-        let _guard = TenantIgnoreGuard::new();
 
         if let Some(idx) = tenant_user::Entity::find()
             .filter(tenant_user::Column::UserId.eq(user_id))
@@ -278,8 +267,8 @@ impl UserAppService {
         Ok(())
     }
 
+    #[ignore_tenant]
     async fn find_tenant_user_index(&self, user_id: &str) -> Result<Option<tenant_user::Model>, AppError> {
-        let _guard = TenantIgnoreGuard::new();
         Ok(tenant_user::Entity::find()
             .filter(tenant_user::Column::UserId.eq(user_id))
             .one(&self.db)

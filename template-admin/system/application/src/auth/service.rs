@@ -7,14 +7,14 @@ use sa_token_core::refresh::RefreshTokenManager;
 use sa_token_core::StpUtil;
 use sea_orm::prelude::*;
 use sea_orm::{ActiveValue::Set, ColumnTrait, QueryFilter, QueryOrder};
-use sea_orm_ext::{tenant_scope, TenantIgnoreGuard};
+use sea_orm_ext::{ignore_tenant, tenant_scope, TenantIgnoreGuard};
 use sea_query::Value;
 use std::sync::Arc;
 use summer::plugin::service::Service;
 use summer_redis::Redis;
 use summer_sa_token::storage::SummerRedisStorage;
 use summer_sa_token::{CoreConfig, SaTokenConfig};
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use system_entity::{menu, role, role_menu, tenant, tenant_user, user, user_role};
 
 #[derive(Clone, Service)]
@@ -30,18 +30,13 @@ pub struct AuthAppService {
 impl AuthAppService {
     fn create_refresh_manager(&self) -> RefreshTokenManager {
         let storage: Arc<dyn SaStorage> = Arc::new(
-            SummerRedisStorage::new(
-                self.redis.clone(),
-                self.sa_token_config.storage_prefix.clone(),
-                self.sa_token_config.rewrite_storage_prefix,
-            )
+            SummerRedisStorage::new(self.redis.clone())
         );
         RefreshTokenManager::new(storage, Arc::new(CoreConfig::from(self.sa_token_config.clone())))
     }
 
+    #[ignore_tenant]
     pub async fn locate_tenant(&self, dto: LocateTenantDto) -> Result<LocateTenantVo, AppError> {
-        let _guard = TenantIgnoreGuard::new();
-
         let index = tenant_user::Entity::find()
             .filter(tenant_user::Column::UserName.eq(&dto.user_name))
             .filter(tenant_user::Column::Status.eq(1))
@@ -63,11 +58,10 @@ impl AuthAppService {
             .await?
             .ok_or_else(|| AppError::Unauthorized("用户名或密码错误".to_string()))?;
 
-        if let Some(expire) = tenant_model.expire_time {
-            if expire < chrono::Utc::now() {
+        if let Some(expire) = tenant_model.expire_time
+            && expire < chrono::Utc::now() {
                 return Err(AppError::Unauthorized("租户已过期".to_string()));
             }
-        }
 
         Ok(LocateTenantVo {
             tenant_name: tenant_model.tenant_name,
@@ -125,14 +119,13 @@ impl AuthAppService {
         self.login_table_mode(dto).await
     }
 
+    #[ignore_tenant]
     async fn login_database_mode(&self, dto: LoginDto) -> Result<TokenVo, AppError> {
         let user_name = dto.user_name.as_deref()
             .ok_or_else(|| AppError::BadRequest("用户名不能为空".to_string()))?;
         let tenant_code = dto.tenant_code.as_deref()
             .ok_or_else(|| AppError::BadRequest("租户编码不能为空".to_string()))?;
         let remember_me = dto.remember_me.unwrap_or(false);
-
-        let _guard = TenantIgnoreGuard::new();
 
         let tenant_model = tenant::Entity::find()
             .filter(tenant::Column::TenantCode.eq(tenant_code))
@@ -141,11 +134,10 @@ impl AuthAppService {
             .await?
             .ok_or_else(|| AppError::Unauthorized("用户名或密码错误".to_string()))?;
 
-        if let Some(expire) = tenant_model.expire_time {
-            if expire < chrono::Utc::now() {
+        if let Some(expire) = tenant_model.expire_time
+            && expire < chrono::Utc::now() {
                 return Err(AppError::Unauthorized("用户名或密码错误".to_string()));
             }
-        }
 
         let tenant_db = self.get_tenant_database(&tenant_model.id).await?;
 
@@ -155,7 +147,7 @@ impl AuthAppService {
             .await?
             .ok_or_else(|| AppError::Unauthorized("用户名或密码错误".to_string()))?;
 
-        if user_model.pass_word != dto.pass_word {
+        if !common::verify_password(&dto.pass_word, &user_model.pass_word)? {
             return Err(AppError::Unauthorized("用户名或密码错误".to_string()));
         }
 
@@ -166,6 +158,7 @@ impl AuthAppService {
         self.do_login(&tenant_model, &user_model, &tenant_db, "database", remember_me).await
     }
 
+    #[ignore_tenant]
     async fn login_third_party(
         &self,
         provider: &str,
@@ -176,8 +169,6 @@ impl AuthAppService {
         let tenant_code = state.as_deref().unwrap_or("");
 
         let openid = self.get_third_party_openid(provider, code).await?;
-
-        let _guard = TenantIgnoreGuard::new();
 
         let index = tenant_user::Entity::find()
             .filter(tenant_user::Column::IdentityType.eq(provider))
@@ -220,10 +211,10 @@ impl AuthAppService {
         self.do_login(&tenant_model, &user_model, db, tenant_mode, false).await
     }
 
+    #[ignore_tenant]
     async fn login_table_mode(&self, dto: LoginDto) -> Result<TokenVo, AppError> {
         let login_type = dto.login_type.as_deref().unwrap_or("username");
         let remember_me = dto.remember_me.unwrap_or(false);
-        let _guard = TenantIgnoreGuard::new();
 
         let user_model = match login_type {
             "email" => {
@@ -246,7 +237,7 @@ impl AuthAppService {
             }
         };
 
-        if user_model.pass_word != dto.pass_word {
+        if !common::verify_password(&dto.pass_word, &user_model.pass_word)? {
             return Err(AppError::Unauthorized("密码错误".to_string()));
         }
 
@@ -324,7 +315,7 @@ impl AuthAppService {
                 .map_err(|e| AppError::Internal(format!("生成刷新令牌失败: {}", e)))?;
 
             let refresh_exp = if self.sa_token_config.refresh_token_timeout > 0 {
-                Some(chrono::Utc::now().timestamp() + self.sa_token_config.refresh_token_timeout as i64)
+                Some(chrono::Utc::now().timestamp() + self.sa_token_config.refresh_token_timeout)
             } else {
                 None
             };
@@ -337,7 +328,7 @@ impl AuthAppService {
         Ok(TokenVo {
             token,
             token_name: self.sa_token_config.token_name.clone(),
-            token_prefix: self.sa_token_config.token_prefix.clone().unwrap_or_default(),
+            token_prefix: "Bearer ".to_string(),
             refresh_token,
             expire_time,
             refresh_expire_time,
@@ -348,7 +339,7 @@ impl AuthAppService {
         &self,
         tenant_model: &tenant::Model,
         user_model: &user::Model,
-        db: &DatabaseConnection,
+        db: &DbConn,
         tenant_mode: &str,
         remember_me: bool,
     ) -> Result<TokenVo, AppError> {
@@ -382,7 +373,7 @@ impl AuthAppService {
                 .map_err(|e| AppError::Internal(format!("生成刷新令牌失败: {}", e)))?;
 
             let refresh_exp = if self.sa_token_config.refresh_token_timeout > 0 {
-                Some(chrono::Utc::now().timestamp() + self.sa_token_config.refresh_token_timeout as i64)
+                Some(chrono::Utc::now().timestamp() + self.sa_token_config.refresh_token_timeout)
             } else {
                 None
             };
@@ -395,20 +386,20 @@ impl AuthAppService {
         Ok(TokenVo {
             token,
             token_name: self.sa_token_config.token_name.clone(),
-            token_prefix: self.sa_token_config.token_prefix.clone().unwrap_or_default(),
+            token_prefix: "Bearer ".to_string(),
             refresh_token,
             expire_time,
             refresh_expire_time,
         })
     }
 
-    async fn get_tenant_database(&self, tenant_id: &str) -> Result<DatabaseConnection, AppError> {
+    async fn get_tenant_database(&self, tenant_id: &str) -> Result<DbConn, AppError> {
         get_effective_db_by_tenant_id(&self.db,Some(tenant_id.to_string())).await
     }
 
     async fn load_user_permissions(
         &self,
-        db: &DatabaseConnection,
+        db: &DbConn,
         user_id: &str,
     ) -> Result<(Vec<String>, Vec<String>), AppError> {
         let user_roles = user_role::Entity::find()
@@ -493,7 +484,7 @@ impl AuthAppService {
 
         let expire_time = token_info.expire_time.map(|t| t.timestamp());
         let refresh_expire_time = if self.sa_token_config.refresh_token_timeout > 0 {
-            Some(chrono::Utc::now().timestamp() + self.sa_token_config.refresh_token_timeout as i64)
+            Some(chrono::Utc::now().timestamp() + self.sa_token_config.refresh_token_timeout)
         } else {
             None
         };
@@ -501,16 +492,15 @@ impl AuthAppService {
         Ok(TokenVo {
             token: new_token_value.as_str().to_string(),
             token_name: self.sa_token_config.token_name.clone(),
-            token_prefix: self.sa_token_config.token_prefix.clone().unwrap_or_default(),
+            token_prefix: "Bearer ".to_string(),
             refresh_token: Some(refresh_token_str.to_string()),
             expire_time,
             refresh_expire_time,
         })
     }
 
+    #[ignore_tenant]
     pub async fn register(&self, dto: RegisterDto) -> Result<UserInfoVo, AppError> {
-        let _guard = TenantIgnoreGuard::new();
-
         if let Some(tenant_code) = &dto.tenant_code {
             let tenant_model = tenant::Entity::find()
                 .filter(tenant::Column::TenantCode.eq(tenant_code))
@@ -533,7 +523,7 @@ impl AuthAppService {
 
                 let user_model = user::ActiveModel {
                     user_name: Set(dto.user_name.clone()),
-                    pass_word: Set(dto.pass_word.clone()),
+                    pass_word: Set(common::hash_password(&dto.pass_word)?),
                     nick_name: Set(dto.nick_name.clone()),
                     email: Set(dto.email.clone()),
                     phone: Set(dto.phone.clone()),
@@ -585,7 +575,7 @@ impl AuthAppService {
 
         let user_model = user::ActiveModel {
             user_name: Set(dto.user_name),
-            pass_word: Set(dto.pass_word),
+            pass_word: Set(common::hash_password(&dto.pass_word)?),
             nick_name: Set(dto.nick_name),
             email: Set(dto.email),
             phone: Set(dto.phone),
@@ -637,15 +627,19 @@ impl AuthAppService {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let (db, tenant_name) = if tenant_mode == Some("database".to_string()) && tenant_id.is_some() {
-            let tenant_db = self.get_tenant_database(tenant_id.as_ref().unwrap()).await?;
+        let (db, tenant_name) = if tenant_mode.as_deref() == Some("database") {
+            if let Some(ref tid) = tenant_id {
+                let tenant_db = self.get_tenant_database(tid).await?;
 
-            let tenant_model = tenant::Entity::find()
-                .filter(tenant::Column::Id.eq(tenant_id.as_ref().unwrap()))
-                .one(&self.db)
-                .await?;
+                let tenant_model = tenant::Entity::find()
+                    .filter(tenant::Column::Id.eq(tid))
+                    .one(&self.db)
+                    .await?;
 
-            (tenant_db, tenant_model.map(|t| t.tenant_name))
+                (tenant_db, tenant_model.map(|t| t.tenant_name))
+            } else {
+                (self.db.clone(), None)
+            }
         } else {
             (self.db.clone(), None)
         };

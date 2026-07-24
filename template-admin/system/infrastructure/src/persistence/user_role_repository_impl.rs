@@ -1,8 +1,8 @@
-use async_trait::async_trait;
+﻿use async_trait::async_trait;
 use common::error::AppError;
 use sea_orm::prelude::*;
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, DeleteMany};
-use summer_sea_orm::DbConn;
+use sea_orm::{QueryFilter, ColumnTrait};
+use sea_orm_ext::DbConn;
 use system_entity::user_role;
 use system_domain::UserRoleRepository;
 

@@ -1,9 +1,11 @@
-use common::error::AppError;
+﻿use common::error::AppError;
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use sea_orm::{ActiveValue::Set, QueryFilter, ColumnTrait};
 use sea_orm::prelude::*;
 use system_entity::{tenant_user, user};
+// user entity has DeriveSoftDelete, so model.delete() triggers the macro
+// which returns Err("Record was soft-deleted"). Use manual soft delete instead.
 
 #[derive(Clone, Service)]
 pub struct TenantUserService {
@@ -23,7 +25,7 @@ impl TenantUserService {
     ) -> Result<user::Model, AppError> {
         let user_model = user::ActiveModel {
             user_name: Set(user_name.to_string()),
-            pass_word: Set("123456".to_string()),
+            pass_word: Set(common::hash_password("123456")?),
             nick_name: Set(None),
             email: Set(email.cloned()),
             phone: Set(phone.cloned()),
@@ -59,7 +61,9 @@ impl TenantUserService {
             .await?
             .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
 
-        user.delete(tenant_db).await?;
+        let mut am: user::ActiveModel = user.into();
+        am.delete_flag = Set(1);
+        am.update(tenant_db).await?;
 
         tenant_user::Entity::delete_many()
             .filter(tenant_user::Column::UserName.eq(user_name))

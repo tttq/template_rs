@@ -1,9 +1,9 @@
 use common::datetime_format;
 use sea_orm::entity::prelude::*;
-use sea_orm_ext::DeriveTenant;
+use sea_orm_ext::DeriveAutoFillTenant;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, DeriveEntityModel, DeriveTenant)]
+#[derive(Clone, Debug, Serialize, Deserialize, DeriveEntityModel, DeriveAutoFillTenant)]
 #[sea_orm(table_name = "sea_orm_permission")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
@@ -12,6 +12,7 @@ pub struct Model {
     pub action: String,
     pub description: Option<String>,
     #[serde(with = "datetime_format")]
+    #[sea_orm_ext(insert)]
     pub create_time: DateTimeUtc,
     #[sea_orm_ext(TENANT)]
     pub tenant_id: Option<String>,

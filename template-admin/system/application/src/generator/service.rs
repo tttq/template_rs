@@ -1,6 +1,6 @@
-use common::error::AppError;
+﻿use common::error::AppError;
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use sea_orm::{ConnectionTrait, Statement, DatabaseBackend};
 use std::io::Write;
 
@@ -193,7 +193,7 @@ fn generate_entity_code(_name: &str, _snake: &str, table: &str, columns: &[Colum
     for col in columns {
         let rt = rust_type(&col.column_type);
         let opt = is_optional(&col.column_type, &col.is_nullable, col.is_primary_key);
-        let field_name = col.column_name.replace("_", "_");
+        let field_name = col.column_name.clone();
         let type_str = if opt { format!("Option<{}>", rt) } else { rt.clone() };
 
         let mut attrs = String::new();
@@ -256,7 +256,7 @@ pub trait {name}Repository: Send + Sync {{
 
 fn generate_repository_impl_code(name: &str, snake: &str, module: &str) -> String {
     format!(r#"use common::error::AppError;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use summer::plugin::service::Service;
 use system_entity::{snake};
 use system_domain::{module}::{name}Repository;
@@ -293,8 +293,14 @@ impl {name}Repository for {name}RepositoryImpl {{
     }}
 
     async fn delete_by_id(&self, id: String) -> Result<(), AppError> {{
-        {snake}::Entity::delete_by_id(id)
-            .exec(&self.db)
+        let model = {snake}::Entity::find_by_id(&id)
+            .one(&self.db)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .ok_or_else(|| AppError::NotFound("记录不存在".to_string()))?;
+        let mut am: {snake}::ActiveModel = model.into();
+        am.delete_flag = sea_orm::Set(1);
+        am.update(&self.db)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         Ok(())
@@ -375,7 +381,7 @@ fn generate_service_code(name: &str, snake: &str, _module: &str) -> String {
     format!(r#"use common::error::AppError;
 use common::pagination::{{PageQuery, PageResult}};
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use system_entity::{snake};
 use sea_orm::{{EntityTrait, ActiveModelTrait, Set, QueryFilter, ColumnTrait, PaginatorTrait}};
 use super::dto::*;

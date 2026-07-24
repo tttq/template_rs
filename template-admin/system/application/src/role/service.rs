@@ -2,9 +2,9 @@ use common::error::AppError;
 use common::pagination::{PageQuery, PageResult};
 use common::tenant_db::get_effective_db;
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use system_entity::{role, role_menu};
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, PaginatorTrait, QueryOrder};
+use sea_orm::{QueryFilter, ColumnTrait, PaginatorTrait, QueryOrder};
 use sea_orm::ActiveValue::Set;
 use sea_orm::prelude::*;
 
@@ -66,7 +66,7 @@ impl RoleAppService {
         }
 
         let mut result = Vec::new();
-        if let Some(roots) = map.remove(&"0".to_string()) {
+        if let Some(roots) = map.remove("0") {
             for mut root in roots {
                 root.children = Self::build_children(root.id.clone(), &mut map);
                 result.push(root);
@@ -130,15 +130,12 @@ impl RoleAppService {
         let model = active_model.insert(&db).await?;
 
         if let Some(ids) = menu_ids {
-            for menu_id in ids {
-                role_menu::ActiveModel {
-                    role_id: Set(model.id.clone()),
-                    menu_id: Set(menu_id),
-                    ..Default::default()
-                }
-                .insert(&db)
-                .await?;
-            }
+            let models: Vec<role_menu::ActiveModel> = ids.into_iter().map(|menu_id| role_menu::ActiveModel {
+                role_id: Set(model.id.clone()),
+                menu_id: Set(menu_id),
+                ..Default::default()
+            }).collect();
+            role_menu::Entity::insert_many_with_fill(models, &db).await?;
         }
 
         let mut vo: RoleVo = model.into();
@@ -159,15 +156,12 @@ impl RoleAppService {
                 .exec(&db)
                 .await?;
 
-            for menu_id in ids {
-                role_menu::ActiveModel {
-                    role_id: Set(model.id.clone()),
-                    menu_id: Set(menu_id),
-                    ..Default::default()
-                }
-                .insert(&db)
-                .await?;
-            }
+            let models: Vec<role_menu::ActiveModel> = ids.into_iter().map(|menu_id| role_menu::ActiveModel {
+                role_id: Set(model.id.clone()),
+                menu_id: Set(menu_id),
+                ..Default::default()
+            }).collect();
+            role_menu::Entity::insert_many_with_fill(models, &db).await?;
         }
 
         let mut vo: RoleVo = model.into();
@@ -219,15 +213,12 @@ impl RoleAppService {
             .exec(&db)
             .await?;
 
-        for menu_id in menu_ids {
-            role_menu::ActiveModel {
-                role_id: Set(role_id.clone()),
-                menu_id: Set(menu_id),
-                ..Default::default()
-            }
-            .insert(&db)
-            .await?;
-        }
+        let models: Vec<role_menu::ActiveModel> = menu_ids.into_iter().map(|menu_id| role_menu::ActiveModel {
+            role_id: Set(role_id.clone()),
+            menu_id: Set(menu_id),
+            ..Default::default()
+        }).collect();
+        role_menu::Entity::insert_many_with_fill(models, &db).await?;
 
         Ok(())
     }

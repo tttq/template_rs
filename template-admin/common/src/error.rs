@@ -30,3 +30,9 @@ impl From<sea_orm::DbErr> for AppError {
         AppError::DbErr(err.to_string())
     }
 }
+
+impl From<bcrypt::BcryptError> for AppError {
+    fn from(err: bcrypt::BcryptError) -> Self {
+        AppError::Internal(format!("密码处理失败: {}", err))
+    }
+}

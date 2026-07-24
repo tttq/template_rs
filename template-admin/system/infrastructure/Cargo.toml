@@ -1,12 +1,17 @@
 [package]
 name = "system-infrastructure"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["sea-orm", "sea-orm-ext"]
+sea-orm = ["dep:sea-orm", "common/sea-orm"]
+sea-orm-ext = ["dep:sea-orm-ext", "common/sea-orm-ext"]
 
 [dependencies]
-system-entity = { path = "../entity" }
-system-domain = { path = "../domain" }
-common = { path = "../../common" }
-sea-orm = "2.0.0-rc.38"
-summer-sea-orm = "0.5.0-rc.1"
-async-trait = "0.1"
+system-entity = { workspace = true }
+system-domain = { workspace = true }
+common = { workspace = true }
+sea-orm = { workspace = true, optional = true }
+sea-orm-ext = { workspace = true, optional = true }
+async-trait = { workspace = true }

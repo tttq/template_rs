@@ -3,6 +3,7 @@ use system_entity::user;
 use sea_orm::ActiveValue::Set;
 use chrono::{DateTime, Utc};
 use common::datetime_format;
+use common::hash_password;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,10 +19,10 @@ pub struct CreateUserDto {
 }
 
 impl CreateUserDto {
-    pub fn into_active_model(self) -> user::ActiveModel {
-        user::ActiveModel {
+    pub fn into_active_model(self) -> Result<user::ActiveModel, common::error::AppError> {
+        Ok(user::ActiveModel {
             user_name: Set(self.user_name),
-            pass_word: Set(self.pass_word),
+            pass_word: Set(hash_password(&self.pass_word)?),
             nick_name: Set(self.nick_name),
             email: Set(self.email),
             phone: Set(self.phone),
@@ -29,7 +30,7 @@ impl CreateUserDto {
             admin_flag: Set(0),
             dept_id: Set(self.dept_id),
             ..Default::default()
-        }
+        })
     }
 }
 

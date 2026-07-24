@@ -1,26 +1,36 @@
 [package]
 name = "system-application"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["sea-orm", "sea-orm-ext", "sea-query", "sa-token", "summer", "summer-redis", "monitor", "http-client", "compression"]
+sea-orm = ["dep:sea-orm", "common/sea-orm"]
+sea-orm-ext = ["dep:sea-orm-ext", "common/sea-orm-ext", "system-entity/sea-orm-ext"]
+sa-token = ["dep:summer-sa-token", "dep:sa-token-core", "dep:sa-token-adapter", "common/sa-token"]
+summer = ["dep:summer"]
+summer-redis = ["dep:summer-redis"]
+monitor = ["dep:sysinfo", "dep:num_cpus"]
+http-client = ["dep:reqwest"]
+compression = ["dep:zip"]
 
 [dependencies]
-system-entity = { path = "../entity" }
-common = { path = "../../common" }
-sea-orm = "2.0.0-rc.38"
-sea-orm-ext =  { path = "D:\\Projcets\\Rust\\sea-orm-ext", features = ["summer","summer-web","default"]}
-sea-query = "1.0.0-rc.33"
-summer = "0.5.0-rc.1"
-summer-sea-orm = "0.5.0-rc.1"
-sa-token-core = "0.1.15"
-summer-sa-token = { version = "0.5.0-rc.1", features = ["with-summer-redis"] }
-summer-redis = "0.5.0-rc.1"
-sa-token-adapter = "0.1.15"
-chrono = { version = "0.4", features = ["serde"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-zip = "2"
-sysinfo = "0.33"
-num_cpus = "1"
-tokio = { version = "1", features = ["time"] }
-log = "0.4"
-reqwest = { version = "0.12", features = ["json"] }
+system-entity = { workspace = true }
+common = { workspace = true }
+sea-orm = { workspace = true, optional = true }
+sea-orm-ext = { workspace = true, optional = true }
+sea-query = { workspace = true, optional = true }
+summer = { workspace = true, optional = true }
+summer-sa-token = { workspace = true, optional = true, features = ["with-summer-redis"] }
+summer-redis = { workspace = true, optional = true }
+sa-token-core = { workspace = true, optional = true }
+sa-token-adapter = { workspace = true, optional = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+zip = { workspace = true, optional = true }
+sysinfo = { workspace = true, optional = true }
+num_cpus = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["time"] }
+log = { workspace = true }
+reqwest = { workspace = true, optional = true }

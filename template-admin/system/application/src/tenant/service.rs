@@ -1,12 +1,11 @@
 use common::error::AppError;
 use common::pagination::{PageQuery, PageResult};
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
+use sea_orm_ext::plugin::TenantManagerComponent;
 use system_entity::{tenant, user, role, role_menu, menu, tenant_user, user_role};
 use sea_orm::{QueryFilter, ColumnTrait, PaginatorTrait, ActiveValue::Set, ConnectionTrait, DatabaseBackend, Database};
 use sea_orm::prelude::*;
-use sea_orm_ext::{get_tenant_store};
-use sea_query::Value;
 
 use super::dto::{CreateTenantDto, UpdateTenantDto, TenantVo, TestConnectionDto, CreateDatabaseDto, InitDatabaseDto, CreateTenantFullDto};
 
@@ -16,6 +15,10 @@ const INIT_SQL: &str = include_str!("init_schema.sql");
 pub struct TenantAppService {
     #[inject(component)]
     db: DbConn,
+    // 仅在 database 模式 + DynamicTenantPlugin 启用时为 Some，
+    // table 模式下为 None（此时 create_full/delete 中的缓存同步被跳过）。
+    #[inject(component)]
+    tenant_manager: Option<TenantManagerComponent>,
 }
 
 impl TenantAppService {
@@ -108,7 +111,7 @@ impl TenantAppService {
 
         let admin_user = user::ActiveModel {
             user_name: Set(dto.admin_user_name.clone()),
-            pass_word: Set(dto.admin_pass_word.clone()),
+            pass_word: Set(common::hash_password(&dto.admin_pass_word)?),
             nick_name: Set(dto.admin_nick_name.clone()),
             email: Set(None),
             phone: Set(None),
@@ -179,12 +182,12 @@ impl TenantAppService {
             ..Default::default()
         }.insert(&self.db).await?;
 
-        let tenant_id_value = Value::String(Some(tenant_result.id.clone()));
-        if let Some(store) = get_tenant_store() {
-            if let Err(e) = store.insert(tenant_id_value, tenant_db) {
-                log::warn!("Failed to register tenant database connection: {}", e);
+        // 通过 TenantManager 注册租户连接：查询主库配置 → 建立连接池 → 缓存
+        // 替代手动的 store.insert()，由 TenantManager 统一管理连接生命周期和健康检查。
+        if let Some(ref tm) = self.tenant_manager
+            && let Err(e) = tm.manager().add_tenant(&tenant_result.id).await {
+                log::warn!("Failed to register tenant database connection via TenantManager: {}", e);
             }
-        }
 
         Ok(tenant_result.into())
     }
@@ -206,9 +209,11 @@ impl TenantAppService {
         am.delete_flag = Set(1);
         am.update(&self.db).await?;
 
-        if let Some(store) = get_tenant_store() {
-            let _ = store.remove(&Value::String(Some(id)));
-        }
+        // 通过 TenantManager 移除租户连接缓存（同时清理失败计数）
+        if let Some(ref tm) = self.tenant_manager
+            && let Err(e) = tm.manager().remove_tenant(&id).await {
+                log::warn!("Failed to remove tenant database connection via TenantManager: {}", e);
+            }
 
         Ok(())
     }
@@ -281,11 +286,9 @@ fn build_database_url(database_type: &str, base_url: &str, database_name: Option
     match database_type.to_lowercase().as_str() {
         "mysql" => {
             if let Some(name) = database_name {
-                if base_url.contains('?') {
-                    format!("{}/{}{}", base_url.trim_end_matches('/'), name, &base_url[base_url.find('?').unwrap()..])
-                } else {
-                    format!("{}/{}", base_url.trim_end_matches('/'), name)
-                }
+                let query = base_url.find('?').map(|pos| &base_url[pos..]).unwrap_or("");
+                let url_without_query = base_url.split('?').next().unwrap_or(base_url);
+                format!("{}/{}{}", url_without_query.trim_end_matches('/'), name, query)
             } else {
                 base_url.to_string()
             }
@@ -293,10 +296,12 @@ fn build_database_url(database_type: &str, base_url: &str, database_name: Option
         "sqlite" => base_url.to_string(),
         _ => {
             if let Some(name) = database_name {
-                if let Some(pos) = base_url.rfind('/') {
-                    format!("{}/{}", &base_url[..pos], name)
+                let url_without_query = base_url.split('?').next().unwrap_or(base_url);
+                let query = base_url.find('?').map(|pos| &base_url[pos..]).unwrap_or("");
+                if let Some(pos) = url_without_query.rfind('/') {
+                    format!("{}/{}{}", &url_without_query[..pos], name, query)
                 } else {
-                    base_url.to_string()
+                    format!("{}{}", base_url, "")
                 }
             } else {
                 base_url.to_string()

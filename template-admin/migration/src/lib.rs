@@ -19,7 +19,7 @@ impl MigratorTrait for Migrator {
 async fn run() {
     let args: Vec<String> = std::env::args().collect();
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:root@localhost:5432/template3".to_string());
+        .unwrap_or_else(|_| "postgres://postgres:root@localhost:5432/template".to_string());
 
     let (client, connection) = tokio_postgres::connect(&db_url, tokio_postgres::NoTls)
         .await
@@ -69,6 +69,15 @@ async fn run() {
     let menu_count: i64 = client.query_one("SELECT COUNT(*) FROM auth_sys_menu", &[]).await.unwrap().get(0);
     let role_menu_count: i64 = client.query_one("SELECT COUNT(*) FROM auth_sys_role_menu", &[]).await.unwrap().get(0);
     println!("Menus: {}, RoleMenus: {}", menu_count, role_menu_count);
+
+    // 将初始 admin 用户的明文密码替换为 bcrypt 哈希
+    let admin_hash = bcrypt::hash("admin123", bcrypt::DEFAULT_COST)
+        .expect("Failed to hash admin password");
+    client.execute(
+        "UPDATE auth_sys_user SET pass_word = $1 WHERE user_name = 'admin'",
+        &[&admin_hash],
+    ).await.expect("Failed to update admin password hash");
+    println!("Admin password hashed successfully (default: admin123)");
 
     println!("Migration completed successfully!");
 }

@@ -1,8 +1,8 @@
-use async_trait::async_trait;
+﻿use async_trait::async_trait;
 use common::error::AppError;
 use sea_orm::prelude::*;
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, QueryOrder};
-use summer_sea_orm::DbConn;
+use sea_orm::{QueryFilter, ColumnTrait, QueryOrder, ActiveValue::Set};
+use sea_orm_ext::DbConn;
 use system_entity::{dict_type, dict_item};
 use system_domain::{DictTypeRepository, DictItemRepository};
 
@@ -50,7 +50,9 @@ impl DictTypeRepository for DictTypeRepositoryImpl {
             .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("字典类型不存在".to_string()))?;
-        model.delete(&self.db).await?;
+        let mut am: dict_type::ActiveModel = model.into();
+        am.delete_flag = Set(1);
+        am.update(&self.db).await?;
         Ok(())
     }
 }
@@ -100,7 +102,9 @@ impl DictItemRepository for DictItemRepositoryImpl {
             .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("字典项不存在".to_string()))?;
-        model.delete(&self.db).await?;
+        let mut am: dict_item::ActiveModel = model.into();
+        am.delete_flag = Set(1);
+        am.update(&self.db).await?;
         Ok(())
     }
 }

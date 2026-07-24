@@ -1,3 +1,7 @@
+// 宏展开后引用 `summer_sea_orm_ext` 路径，但项目通过 package rename 用 `sea_orm_ext` 导入。
+// 此处建立 crate 别名，让宏生成的完全限定路径可被正确解析。
+extern crate sea_orm_ext as summer_sea_orm_ext;
+
 pub mod user;
 pub mod role;
 pub mod menu;

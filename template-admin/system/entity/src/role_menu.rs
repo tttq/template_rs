@@ -1,9 +1,9 @@
 use common::datetime_format;
 use sea_orm::entity::prelude::*;
-use sea_orm_ext::DeriveAutoFillSoftDeleteTenant;
+use sea_orm_ext::DeriveAutoFillTenant;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, DeriveEntityModel, DeriveAutoFillSoftDeleteTenant)]
+#[derive(Clone, Debug, Serialize, Deserialize, DeriveEntityModel, DeriveAutoFillTenant)]
 #[sea_orm(table_name = "auth_sys_role_menu")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
@@ -14,11 +14,6 @@ pub struct Model {
     #[serde(with = "datetime_format")]
     #[sea_orm_ext(insert)]
     pub create_time: DateTimeUtc,
-    #[sea_orm(version)]
-    #[sea_orm_ext(insert_update)]
-    pub version: i32,
-    #[soft_delete(default = 0, del = 1)]
-    pub delete_flag: i32,
     #[sea_orm_ext(TENANT)]
     pub tenant_id: Option<String>,
 }

@@ -1,8 +1,8 @@
-use common::error::AppError;
+﻿use common::error::AppError;
 use common::pagination::{PageQuery, PageResult};
 use common::tenant_db::get_effective_db;
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use system_entity::dict_type;
 use sea_orm::{QueryFilter, ColumnTrait, PaginatorTrait, ActiveValue::Set};
 use sea_orm::prelude::*;

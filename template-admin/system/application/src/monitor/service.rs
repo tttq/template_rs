@@ -1,6 +1,6 @@
-use common::error::AppError;
+﻿use common::error::AppError;
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use summer_redis::Redis;
 use sea_orm::{ConnectionTrait, Statement, DatabaseBackend};
 use sysinfo::{Disks, System};

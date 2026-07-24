@@ -45,7 +45,7 @@ Database 模式下需解决以下关键问题：
                              │
                     ┌────────▼────────┐
                     │  TenantLayer    │  Axum 中间件
-                    │  (sea-orm-ext)  │  解析租户ID → 设置上下文
+                    │  (summer-sea-orm-ext)  │  解析租户ID → 设置上下文
                     └────────┬────────┘
                              │
                     ┌────────▼────────┐
@@ -1361,7 +1361,7 @@ async fn login_platform_admin(&self, dto: LoginDto) -> Result<TokenVo, AppError>
 
 ### 6.1 现有机制
 
-`sea-orm-ext` 已提供完整的 Database 模式支持：
+`summer-sea-orm-ext` 已提供完整的 Database 模式支持：
 
 | 组件 | 作用 |
 |------|------|
@@ -1465,7 +1465,7 @@ Database 模式下需确保 `TenantMiddleware` 在 `SaTokenLayer` 之后执行�
 当前 `TenantPlugin` 已处理此顺序：
 
 ```rust
-// sea-orm-ext/src/plugin/tenant.rs
+// summer-sea-orm-ext/src/plugin/tenant.rs
 let insert_pos = if app.get_component::<SaTokenLayerMarker>().is_some() {
     // SaTokenLayer 已注册，TenantLayer 放在它之后（内层，更低优先级）
     // 执行顺序：SaTokenLayer(外) → TenantLayer(内) → Handler
@@ -1576,25 +1576,25 @@ pub async fn register(&self, dto: RegisterDto) -> Result<UserInfoVo, AppError> {
 ### 8.1 Database 模式配置
 
 ```toml
-[sea-orm-ext-tenant]
+[summer-sea-orm-ext-tenant]
 enabled = true
 mode = "database"
 database_source = "config"       # "config" | "custom"
 default_tenant_id = 1
 
 # database_source = "config" 时，启动时自动连接以下数据库
-[[sea-orm-ext-tenant.databases]]
+[[summer-sea-orm-ext-tenant.databases]]
 tenant_id = 1
-[sea-orm-ext-tenant.databases.database]
+[summer-sea-orm-ext-tenant.databases.database]
 url = "postgres://postgres:123456@localhost:5432/tenant_1"
 max_connections = 10
 min_connections = 1
 connect_timeout_secs = 30
 acquire_timeout_secs = 30
 
-[[sea-orm-ext-tenant.databases]]
+[[summer-sea-orm-ext-tenant.databases]]
 tenant_id = 2
-[sea-orm-ext-tenant.databases.database]
+[summer-sea-orm-ext-tenant.databases.database]
 url = "postgres://postgres:123456@localhost:5432/tenant_2"
 max_connections = 10
 min_connections = 1
@@ -1787,7 +1787,7 @@ if let Some(expire) = tenant.expire_time {
 | `common/src/tenant_provider.rs` | 适配 Database 模式下 tenantId 类型（String → i64 兼容） |
 | `config/app.toml` | 切换为 `mode = "database"` 并配置租户数据库 |
 
-### 11.3 sea-orm-ext 可能的增强
+### 11.3 summer-sea-orm-ext 可能的增强
 
 | 增强 | 说明 |
 |------|------|
@@ -1890,7 +1890,7 @@ if let Some(expire) = tenant.expire_time {
 **解决方案**（二选一）：
 
 1. **修改 tenant.id 为 i64**：将 `auth_sys_tenant.id` 从 `String` 改为 `i64`，与 ConnectionStore 一致
-2. **扩展 ConnectionStore**：在 sea-orm-ext 中增加 String 类型支持
+2. **扩展 ConnectionStore**：在 summer-sea-orm-ext 中增加 String 类型支持
 
 ```rust
 // 方案2：扩展 HashMapConnectionStore

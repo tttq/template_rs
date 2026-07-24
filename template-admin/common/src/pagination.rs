@@ -33,7 +33,7 @@ pub struct PageResult<T: Serialize> {
 impl<T: Serialize> PageResult<T> {
     pub fn new(items: Vec<T>, total: u64, page: u64, page_size: u64) -> Self {
         let total_pages = if page_size > 0 {
-            (total + page_size - 1) / page_size
+            total.div_ceil(page_size)
         } else {
             0
         };

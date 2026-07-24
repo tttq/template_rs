@@ -1,14 +1,18 @@
 [package]
 name = "system-entity"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["sea-orm", "sea-orm-ext", "sea-query"]
+sea-orm = ["dep:sea-orm"]
+sea-orm-ext = ["dep:sea-orm-ext", "sea-orm", "sea-query"]
 
 [dependencies]
-common = { path = "../../common" }
-sea-orm = "2.0.0-rc.38"
-#sea-orm-ext = { git = "https://github.com/tttq/sea-orm-ext" }
-sea-orm-ext =  { path = "D:\\Projcets\\Rust\\sea-orm-ext", features = ["summer","summer-web","default"]}
-sea-query = "1.0.0-rc.33"
-async-trait = "0.1"
-serde = { version = "1", features = ["derive"] }
-chrono = { version = "0.4", features = ["serde"] }
+common = { workspace = true }
+sea-orm = { workspace = true, optional = true }
+sea-orm-ext = { workspace = true, optional = true }
+sea-query = { workspace = true, optional = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }

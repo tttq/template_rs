@@ -1,8 +1,8 @@
-use async_trait::async_trait;
+﻿use async_trait::async_trait;
 use common::error::AppError;
 use sea_orm::prelude::*;
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait};
-use summer_sea_orm::DbConn;
+use sea_orm::{QueryFilter, ColumnTrait, ActiveValue::Set};
+use sea_orm_ext::DbConn;
 use system_entity::config;
 use system_domain::ConfigRepository;
 
@@ -50,7 +50,9 @@ impl ConfigRepository for ConfigRepositoryImpl {
             .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("配置不存在".to_string()))?;
-        model.delete(&self.db).await?;
+        let mut am: config::ActiveModel = model.into();
+        am.delete_flag = Set(1);
+        am.update(&self.db).await?;
         Ok(())
     }
 }

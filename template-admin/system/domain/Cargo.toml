@@ -1,10 +1,14 @@
 [package]
 name = "system-domain"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["sea-orm"]
+sea-orm = ["dep:sea-orm"]
 
 [dependencies]
-system-entity = { path = "../entity" }
-common = { path = "../../common" }
-sea-orm = "2.0.0-rc.38"
-async-trait = "0.1"
+system-entity = { workspace = true }
+common = { workspace = true }
+sea-orm = { workspace = true, optional = true }
+async-trait = { workspace = true }

@@ -9,6 +9,7 @@ pub mod config_handler;
 pub mod file_handler;
 pub mod monitor_handler;
 pub mod generator_handler;
+pub mod health_handler;
 
 use summer_web::Router;
 

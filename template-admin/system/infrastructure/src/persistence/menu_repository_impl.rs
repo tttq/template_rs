@@ -1,8 +1,8 @@
-use async_trait::async_trait;
+﻿use async_trait::async_trait;
 use common::error::AppError;
 use sea_orm::prelude::*;
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, QueryOrder};
-use summer_sea_orm::DbConn;
+use sea_orm::{QueryFilter, ColumnTrait, QueryOrder, ActiveValue::Set};
+use sea_orm_ext::DbConn;
 use system_entity::menu;
 use system_domain::MenuRepository;
 
@@ -54,7 +54,9 @@ impl MenuRepository for MenuRepositoryImpl {
             .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("菜单不存在".to_string()))?;
-        model.delete(&self.db).await?;
+        let mut am: menu::ActiveModel = model.into();
+        am.delete_flag = Set(1);
+        am.update(&self.db).await?;
         Ok(())
     }
 }

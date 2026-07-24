@@ -31,8 +31,8 @@ Template Admin 是一套全栈后台管理解决方案，后端基于 **Summer-r
 | Rust | Edition 2024 | tokio 异步运行时 |
 | Summer-rs | 0.5.x | 类 SpringBoot 的 Rust 应用框架 |
 | Summer-web (Axum) | 0.5.0 | Web 框架，路由宏/中间件/提取器 |
-| Sea-ORM | 2.0.x | 异步 ORM |
-| sea-orm-ext | - | Auto-Fill / Soft-Delete / Multi-Tenant / IdGenerator |
+| Sea-ORM | 2.0.0 | 异步 ORM |
+| summer-sea-orm-ext | - | Auto-Fill / Soft-Delete / Multi-Tenant / IdGenerator |
 | Summer-sa-token | 0.5.3 | 权限认证框架 |
 | Summer-redis | 0.5.0 | Redis 集成 |
 | PostgreSQL | 17 | 关系型数据库 |
@@ -67,7 +67,7 @@ Template Admin 是一套全栈后台管理解决方案，后端基于 **Summer-r
 
 - 🔐 **RBAC2 双层权限** — summer-sa-token（HTTP 级）+ sea-orm RBAC 引擎（数据级），声明式注解校验
 - 🏢 **多租户** — 表隔离 / 数据库隔离双模式，`TenantGuard` RAII 自动管理
-- 📝 **审计自动填充** — `CommonPlugin` 注册 `AuditFieldFillHandler`，create_by/update_by/version 等字段零代码填充
+- 📝 **审计自动填充** — `AuditFieldFillHandler` 通过 `FieldFillHandlerComponent` 注册，create_by/update_by/version 等字段零代码填充
 - 🗑️ **逻辑删除** — `DeriveSoftDelete` 宏，DELETE 自动转 UPDATE，`find_active()` 自动过滤
 - 🔑 **主键自动生成** — 雪花算法 / UUID，`#[sea_orm(primary_key, auto_generate)]` 声明即启用
 - 📦 **批量操作** — 宏自动生成 `insert_many_with_fill` / `update_many_with_fill` / `delete_many_soft`
@@ -81,9 +81,9 @@ Template Admin 是一套全栈后台管理解决方案，后端基于 **Summer-r
 ```
 template_rs/
 ├── template-admin/                    # 后端 Workspace
-│   ├── common/                        # 共享内核：错误/返回/分页 + StpUtil 封装 + CommonPlugin
+│   ├── common/                        # 共享内核：错误/返回/分页 + StpUtil 封装 + AuditFieldFillHandler
 │   ├── system/
-│   │   ├── entity/                    # Sea-ORM 实体（cli 生成 + sea-orm-ext 注解）
+│   │   ├── entity/                    # Sea-ORM 实体（cli 生成 + summer-sea-orm-ext 注解）
 │   │   ├── domain/                    # 领域层：仓储 trait + 领域服务
 │   │   ├── application/               # 应用层：DTO + 应用服务
 │   │   ├── infrastructure/            # 基础设施：仓储实现 + 中间件
@@ -124,7 +124,7 @@ system/interface → system/application → system/domain ← system/infrastruct
 
 - Rust 1.85+ (Edition 2024)
 - Node.js 18+
-- pnpm 8+
+- pnpm 11.15+
 - Docker & Docker Compose
 
 ### 1. 启动基础设施
@@ -173,12 +173,16 @@ pnpm dev
 [web]
 port = 8080
 graceful = true
+one_indexed = false
+max_page_size = 2000
+default_page_size = 20
 
-[sea-orm]
+[summer-sea-orm-ext]
 uri = "${DATABASE_URL:postgres://postgres:123456@localhost:5432/template}"
 min_connections = 1
 max_connections = 10
-enable_logging = true
+enable_sql_log = true
+default_user = "system"
 
 [sa-token]
 token_name = "Authorization"
@@ -186,19 +190,26 @@ timeout = 86400
 auto_renew = true
 token_style = "Jwt"
 token_prefix = "Bearer "
+jwt_secret_key = "${JWT_SECRET_KEY:please-change-me-in-production}"
+jwt_algorithm = "HS256"
+storage_prefix = "template"
+rewrite_storage_prefix = true
+enable_refresh_token = true
+refresh_token_timeout = 604800
 
 [redis]
 uri = "redis://localhost:6379"
 
-[common]
-default_user = "system"
-
-[sea-orm-ext.tenant]
+[summer-sea-orm-ext-tenant]
 enabled = true
-mode = "table"
-default_tenant_id = 1
+mode = "${TENANT_MODE:table}"
+default_tenant_id = "1876543210000000001"
 header_name = "x-tenant-id"
 ignore_if_missing = true
+database_source = "config"
+
+[common]
+default_user = "system"
 
 [storage]
 enabled = false
@@ -220,8 +231,12 @@ VITE_APP_TITLE=Template Admin
 |--------|------|------|
 | POST | `/api/auth/login` | 登录 |
 | POST | `/api/auth/register` | 注册 |
-| POST | `/api/auth/bind` | 绑定第三方账号 |
+| GET | `/api/auth/user-info` | 获取当前登录用户信息 |
+| POST | `/api/auth/logout` | 登出 |
+| POST | `/api/auth/refresh-token` | 刷新令牌 |
 | GET | `/api/auth/providers` | 获取认证提供者列表 |
+| POST | `/api/auth/bind` | 绑定第三方账号 |
+| POST | `/api/auth/locate` | 定位租户 |
 
 ### 系统管理
 
@@ -339,7 +354,7 @@ sea-orm-cli generate entity \
 
 路由级别权限通过 `meta.permission` 字段控制，组件级别使用 `v-if="userStore.hasPermission('xxx')"` 控制。
 
-## 📦 sea-orm-ext 能力一览
+## 📦 summer-sea-orm-ext 能力一览
 
 | 能力 | Derive 宏 | 注解 | 说明 |
 |------|-----------|------|------|

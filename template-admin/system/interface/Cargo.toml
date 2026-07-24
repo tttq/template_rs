@@ -1,13 +1,20 @@
 [package]
 name = "system-interface"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["sa-token", "summer-web"]
+sa-token = ["dep:summer-sa-token", "common/sa-token"]
+summer-web = ["dep:summer-web", "dep:summer-redis", "dep:sea-orm-ext"]
 
 [dependencies]
-system-entity = { path = "../entity" }
-system-domain = { path = "../domain" }
-system-application = { path = "../application" }
-common = { path = "../../common" }
-summer-web = "0.5.0-rc.1"
-summer-sa-token = "0.5.0-rc.1"
-serde_json = "1"
+system-entity = { workspace = true }
+system-domain = { workspace = true }
+system-application = { workspace = true }
+common = { workspace = true }
+summer-web = { workspace = true, optional = true }
+summer-redis = { workspace = true, optional = true }
+summer-sa-token = { workspace = true, optional = true }
+sea-orm-ext = { workspace = true, optional = true }
+serde_json = { workspace = true }

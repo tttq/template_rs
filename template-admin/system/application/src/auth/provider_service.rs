@@ -1,6 +1,6 @@
-use common::error::AppError;
+﻿use common::error::AppError;
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use sa_token_core::StpUtil;
 
 use super::provider::{BindDto, ProviderVo};

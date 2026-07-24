@@ -1,7 +1,7 @@
 use common::error::AppError;
 use common::tenant_db::get_effective_db;
 use summer::plugin::service::Service;
-use summer_sea_orm::DbConn;
+use sea_orm_ext::DbConn;
 use system_entity::dept;
 use sea_orm::{QueryFilter, ColumnTrait, QueryOrder, ActiveValue::Set};
 use sea_orm::prelude::*;
@@ -115,12 +115,13 @@ impl DeptAppService {
             .all(&db)
             .await?;
 
-        for child in children {
-            let mut am: dept::ActiveModel = child.into();
-            am.delete_flag = Set(1);
-            am.update(&db).await?;
+        // 批量软删除子部门（单条 SQL）
+        if !children.is_empty() {
+            let child_models: Vec<dept::ActiveModel> = children.into_iter().map(Into::into).collect();
+            dept::Entity::delete_many_soft(child_models, &db).await?;
         }
 
+        // 软删除父部门：保留 update 审计字段填充（who/when deleted）
         let mut am: dept::ActiveModel = model.into();
         am.delete_flag = Set(1);
         am.update(&db).await?;
