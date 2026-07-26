@@ -1,13 +1,12 @@
 use super::dto::{LocateTenantDto, LocateTenantVo, LoginDto, RegisterDto, TokenVo, UserInfoVo};
 use crate::menu::dto::MenuVo;
 use common::error::AppError;
-use common::tenant_db::get_effective_db_by_tenant_id;
 use sa_token_adapter::storage::SaStorage;
 use sa_token_core::refresh::RefreshTokenManager;
 use sa_token_core::StpUtil;
 use sea_orm::prelude::*;
 use sea_orm::{ActiveValue::Set, ColumnTrait, QueryFilter, QueryOrder};
-use sea_orm_ext::{ignore_tenant, tenant_scope, TenantIgnoreGuard};
+use sea_orm_ext::{get_tenant_config, ignore_tenant, tenant_scope, TenantIgnoreGuard};
 use sea_query::Value;
 use std::sync::Arc;
 use summer::plugin::service::Service;
@@ -394,7 +393,13 @@ impl AuthAppService {
     }
 
     async fn get_tenant_database(&self, tenant_id: &str) -> Result<DbConn, AppError> {
-        get_effective_db_by_tenant_id(&self.db,Some(tenant_id.to_string())).await
+        // 未登录场景（登录/注册）下 provider 返回 None，自动路由不生效，
+        // 需要手动按 tenant_id 选库。使用 unchecked 版本跳过 mode 检查
+        // （因为全局配置可能是 table，但该 tenant 实际是 database 模式）。
+        let tid_value = Value::String(Some(tenant_id.to_string()));
+        let db = sea_orm_ext::get_database_for_tenant_unchecked(&tid_value)?
+            .unwrap_or_else(|| self.db.inner().clone());
+        Ok(DbConn::new(db))
     }
 
     async fn load_user_permissions(
@@ -564,14 +569,56 @@ impl AuthAppService {
             }
         }
 
+        // table 模式注册：根据 tenant_code 或默认配置填充 tenant_id
+        // 由于外层 #[ignore_tenant] 跳过了框架自动填充，需手动 Set
+        let (tenant_id, tenant_code, tenant_name) = if let Some(code) = &dto.tenant_code {
+            let tenant_model = tenant::Entity::find()
+                .filter(tenant::Column::TenantCode.eq(code))
+                .filter(tenant::Column::Status.eq(1))
+                .one(&self.db)
+                .await?
+                .ok_or_else(|| AppError::BadRequest("租户不存在".to_string()))?;
+
+            if tenant_model.mode == "database" {
+                return Err(AppError::BadRequest("该租户为 database 模式，请走 database 注册流程".to_string()));
+            }
+
+            (
+                tenant_model.id.clone(),
+                tenant_model.tenant_code.clone(),
+                tenant_model.tenant_name.clone(),
+            )
+        } else {
+            // 使用全局配置的默认租户 ID
+            let default_id = get_tenant_config()
+                .and_then(|c| c.default_tenant_id.clone())
+                .and_then(|v| match v {
+                    Value::String(Some(s)) => Some(s),
+                    _ => None,
+                })
+                .ok_or_else(|| AppError::Internal("未配置默认租户 ID，无法完成 table 模式注册".to_string()))?;
+
+            // 查询默认租户的 code/name 用于索引同步
+            let tenant_model = tenant::Entity::find()
+                .filter(tenant::Column::Id.eq(&default_id))
+                .one(&self.db)
+                .await?
+                .ok_or_else(|| AppError::Internal(format!("默认租户 {} 不存在", default_id)))?;
+
+            (default_id, tenant_model.tenant_code.clone(), tenant_model.tenant_name.clone())
+        };
+
         let existing = user::Entity::find()
             .filter(user::Column::UserName.eq(&dto.user_name))
+            .filter(user::Column::TenantId.eq(&tenant_id))
             .one(&self.db)
             .await?;
 
         if existing.is_some() {
             return Err(AppError::BadRequest("用户名已存在".to_string()));
         }
+
+        let identity_value = dto.email.clone().or(dto.phone.clone());
 
         let user_model = user::ActiveModel {
             user_name: Set(dto.user_name),
@@ -580,13 +627,27 @@ impl AuthAppService {
             email: Set(dto.email),
             phone: Set(dto.phone),
             identity_type: Set(Some("username".to_string())),
+            identity_value: Set(identity_value),
             status: Set(1),
             admin_flag: Set(0),
             dept_id: Set(None),
+            tenant_id: Set(Some(tenant_id.clone())),
             ..Default::default()
         };
 
         let result = user_model.insert(&self.db).await?;
+
+        // 同步 tenant_user 索引（主库）
+        tenant_user::ActiveModel {
+            user_name: Set(result.user_name.clone()),
+            tenant_id: Set(tenant_id.clone()),
+            tenant_code: Set(tenant_code.clone()),
+            user_id: Set(result.id.clone()),
+            identity_type: Set("username".to_string()),
+            identity_value: Set(result.email.clone().or(result.phone.clone())),
+            status: Set(1),
+            ..Default::default()
+        }.insert(&self.db).await?;
 
         Ok(UserInfoVo {
             id: result.id,
@@ -598,9 +659,9 @@ impl AuthAppService {
             roles: vec![],
             permissions: vec![],
             menus: vec![],
-            tenant_id: result.tenant_id,
-            tenant_code: None,
-            tenant_name: None,
+            tenant_id: Some(tenant_id),
+            tenant_code: Some(tenant_code),
+            tenant_name: Some(tenant_name),
         })
     }
 
@@ -627,46 +688,47 @@ impl AuthAppService {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let (db, tenant_name) = if tenant_mode.as_deref() == Some("database") {
+        // database 模式下 self.db 会自动路由到租户库（由 SaTokenTenantIdProvider 提供 tenantMode），
+        // 无需手动切换数据库。但查询 auth_sys_tenant 全局表时需要临时走主库，
+        // 否则会被路由到租户库导致找不到表。
+        let tenant_name = if tenant_mode.as_deref() == Some("database") {
             if let Some(ref tid) = tenant_id {
-                let tenant_db = self.get_tenant_database(tid).await?;
-
-                let tenant_model = tenant::Entity::find()
+                let _main_db_guard = TenantIgnoreGuard::new();
+                tenant::Entity::find()
                     .filter(tenant::Column::Id.eq(tid))
                     .one(&self.db)
-                    .await?;
-
-                (tenant_db, tenant_model.map(|t| t.tenant_name))
+                    .await?
+                    .map(|t| t.tenant_name)
             } else {
-                (self.db.clone(), None)
+                None
             }
         } else {
-            (self.db.clone(), None)
+            None
         };
 
         let user_model = user::Entity::find()
             .filter(user::Column::Id.eq(&user_id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
 
         let (role_codes, permissions, menu_tree) = {
             let user_roles = user_role::Entity::find()
                 .filter(user_role::Column::UserId.eq(&user_id))
-                .all(&db)
+                .all(&self.db)
                 .await?;
 
             let role_ids: Vec<String> = user_roles.iter().map(|r| r.role_id.clone()).collect();
             let roles = role::Entity::find()
                 .filter(role::Column::Id.is_in(role_ids.clone()))
-                .all(&db)
+                .all(&self.db)
                 .await?;
 
             let role_codes: Vec<String> = roles.iter().map(|r| r.role_code.clone()).collect();
 
             let role_menus = role_menu::Entity::find()
                 .filter(role_menu::Column::RoleId.is_in(role_ids))
-                .all(&db)
+                .all(&self.db)
                 .await?;
 
             let menu_ids: Vec<String> = role_menus.iter().map(|rm| rm.menu_id.clone()).collect();
@@ -675,7 +737,7 @@ impl AuthAppService {
                 .filter(menu::Column::Status.eq(1))
                 .filter(menu::Column::Visible.eq(1))
                 .order_by_asc(menu::Column::SortOrder)
-                .all(&db)
+                .all(&self.db)
                 .await?;
 
             let permissions: Vec<String> = menus

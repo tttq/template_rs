@@ -1,6 +1,6 @@
-﻿use common::error::AppError;
+use common::error::AppError;
 use summer::plugin::service::Service;
-use sea_orm_ext::DbConn;
+use sea_orm_ext::{get_tenant_mode, DbConn, TenantMode};
 use summer_redis::Redis;
 use sea_orm::{ConnectionTrait, Statement, DatabaseBackend};
 use sysinfo::{Disks, System};
@@ -169,7 +169,13 @@ impl MonitorAppService {
             total_count,
             enabled_count,
             disabled_count,
-            mode: "table".to_string(),
+            mode: get_tenant_mode()
+                .map(|m| match m {
+                    TenantMode::Table => "table",
+                    TenantMode::Database => "database",
+                })
+                .unwrap_or("table")
+                .to_string(),
             data_sources,
         })
     }

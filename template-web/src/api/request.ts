@@ -63,8 +63,13 @@ request.interceptors.response.use(
       const config = error.config as InternalAxiosRequestConfig
       return handleRefreshToken(config)
     }
-    message.error(error.message || '网络错误')
-    return Promise.reject(error)
+    // 后端将 401/403 等错误响应体包装为 ApiResponse JSON：
+    // { code: 403, message: "无权限访问", data: null }
+    // 优先使用后端返回的中文消息，避免显示 axios 默认的 "Request failed with status code xxx"
+    const backendMessage = error.response?.data?.message
+    const displayMessage = backendMessage || error.message || '网络错误'
+    message.error(displayMessage)
+    return Promise.reject(new Error(displayMessage))
   },
 )
 

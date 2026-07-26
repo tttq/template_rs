@@ -8,4 +8,8 @@ impl TenantIdProvider for SaTokenTenantIdProvider {
         crate::user::get_current_tenant_id()
             .map(|id| Value::String(Some(id)))
     }
+
+    fn get_tenant_mode(&self) -> Option<String> {
+        crate::user::get_current_tenant_mode()
+    }
 }

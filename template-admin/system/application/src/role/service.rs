@@ -1,6 +1,5 @@
 use common::error::AppError;
 use common::pagination::{PageQuery, PageResult};
-use common::tenant_db::get_effective_db;
 use summer::plugin::service::Service;
 use sea_orm_ext::DbConn;
 use system_entity::{role, role_menu};
@@ -18,10 +17,9 @@ pub struct RoleAppService {
 
 impl RoleAppService {
     pub async fn list(&self, query: PageQuery) -> Result<PageResult<RoleVo>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let paginator = role::Entity::find()
-            .paginate(&db, query.page_size);
+            .paginate(&self.db, query.page_size);
 
         let total = paginator.num_items().await?;
         let items: Vec<role::Model> = paginator.fetch_page(query.page - 1).await?;
@@ -31,11 +29,10 @@ impl RoleAppService {
     }
 
     pub async fn list_tree(&self) -> Result<Vec<RoleVo>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let items: Vec<role::Model> = role::Entity::find()
             .order_by_asc(role::Column::RoleSort)
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         let vos: Vec<RoleVo> = items.into_iter().map(RoleVo::from).collect();
@@ -43,11 +40,10 @@ impl RoleAppService {
     }
 
     pub async fn list_all(&self) -> Result<Vec<RoleVo>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let items: Vec<role::Model> = role::Entity::find()
             .order_by_asc(role::Column::RoleSort)
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         let vos: Vec<RoleVo> = items.into_iter().map(RoleVo::from).collect();
@@ -93,17 +89,16 @@ impl RoleAppService {
     }
 
     pub async fn get_by_id(&self, id: String) -> Result<RoleVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: role::Model = role::Entity::find()
             .filter(role::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("角色不存在".to_string()))?;
 
         let menus = role_menu::Entity::find()
             .filter(role_menu::Column::RoleId.eq(&id))
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         let menu_ids: Vec<String> = menus.into_iter().map(|m| m.menu_id).collect();
@@ -114,11 +109,10 @@ impl RoleAppService {
     }
 
     pub async fn create(&self, dto: CreateRoleDto) -> Result<RoleVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let existing: Option<role::Model> = role::Entity::find()
             .filter(role::Column::RoleCode.eq(&dto.role_code))
-            .one(&db)
+            .one(&self.db)
             .await?;
 
         if existing.is_some() {
@@ -127,7 +121,7 @@ impl RoleAppService {
 
         let menu_ids = dto.menu_ids.clone();
         let active_model = dto.into_active_model();
-        let model = active_model.insert(&db).await?;
+        let model = active_model.insert(&self.db).await?;
 
         if let Some(ids) = menu_ids {
             let models: Vec<role_menu::ActiveModel> = ids.into_iter().map(|menu_id| role_menu::ActiveModel {
@@ -135,7 +129,7 @@ impl RoleAppService {
                 menu_id: Set(menu_id),
                 ..Default::default()
             }).collect();
-            role_menu::Entity::insert_many_with_fill(models, &db).await?;
+            role_menu::Entity::insert_many_with_fill(models, &self.db).await?;
         }
 
         let mut vo: RoleVo = model.into();
@@ -144,16 +138,15 @@ impl RoleAppService {
     }
 
     pub async fn update(&self, dto: UpdateRoleDto) -> Result<RoleVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let menu_ids = dto.menu_ids.clone();
         let active_model = dto.into_active_model();
-        let model = active_model.update(&db).await?;
+        let model = active_model.update(&self.db).await?;
 
         if let Some(ids) = menu_ids {
             role_menu::Entity::delete_many()
                 .filter(role_menu::Column::RoleId.eq(&model.id))
-                .exec(&db)
+                .exec(&self.db)
                 .await?;
 
             let models: Vec<role_menu::ActiveModel> = ids.into_iter().map(|menu_id| role_menu::ActiveModel {
@@ -161,7 +154,7 @@ impl RoleAppService {
                 menu_id: Set(menu_id),
                 ..Default::default()
             }).collect();
-            role_menu::Entity::insert_many_with_fill(models, &db).await?;
+            role_menu::Entity::insert_many_with_fill(models, &self.db).await?;
         }
 
         let mut vo: RoleVo = model.into();
@@ -170,17 +163,16 @@ impl RoleAppService {
     }
 
     pub async fn delete(&self, id: String) -> Result<(), AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: role::Model = role::Entity::find()
             .filter(role::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("角色不存在".to_string()))?;
 
         let children: Vec<role::Model> = role::Entity::find()
             .filter(role::Column::ParentId.eq(&id))
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         if !children.is_empty() {
@@ -189,28 +181,27 @@ impl RoleAppService {
 
         let mut am: role::ActiveModel = model.into();
         am.delete_flag = Set(1);
-        am.update(&db).await?;
+        am.update(&self.db).await?;
 
         role_menu::Entity::delete_many()
             .filter(role_menu::Column::RoleId.eq(&id))
-            .exec(&db)
+            .exec(&self.db)
             .await?;
 
         Ok(())
     }
 
     pub async fn assign_menus(&self, role_id: String, menu_ids: Vec<String>) -> Result<(), AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let _model: role::Model = role::Entity::find()
             .filter(role::Column::Id.eq(&role_id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("角色不存在".to_string()))?;
 
         role_menu::Entity::delete_many()
             .filter(role_menu::Column::RoleId.eq(&role_id))
-            .exec(&db)
+            .exec(&self.db)
             .await?;
 
         let models: Vec<role_menu::ActiveModel> = menu_ids.into_iter().map(|menu_id| role_menu::ActiveModel {
@@ -218,17 +209,16 @@ impl RoleAppService {
             menu_id: Set(menu_id),
             ..Default::default()
         }).collect();
-        role_menu::Entity::insert_many_with_fill(models, &db).await?;
+        role_menu::Entity::insert_many_with_fill(models, &self.db).await?;
 
         Ok(())
     }
 
     pub async fn get_role_menu_ids(&self, role_id: String) -> Result<Vec<String>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let menus = role_menu::Entity::find()
             .filter(role_menu::Column::RoleId.eq(&role_id))
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         Ok(menus.into_iter().map(|m| m.menu_id).collect())

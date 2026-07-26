@@ -1,6 +1,5 @@
 use common::error::AppError;
 use common::pagination::{PageQuery, PageResult};
-use common::tenant_db::get_effective_db;
 use common::user::get_current_tenant_mode;
 use summer::plugin::service::Service;
 use sea_orm_ext::DbConn;
@@ -20,10 +19,8 @@ pub struct UserAppService {
 
 impl UserAppService {
     pub async fn list(&self, query: PageQuery) -> Result<PageResult<UserVo>, AppError> {
-        let db = get_effective_db(&self.db).await?;
-
         let paginator = user::Entity::find()
-            .paginate(&db, query.page_size);
+            .paginate(&self.db, query.page_size);
 
         let total = paginator.num_items().await?;
         let items: Vec<user::Model> = paginator.fetch_page(query.page - 1).await?;
@@ -33,17 +30,16 @@ impl UserAppService {
     }
 
     pub async fn get_by_id(&self, id: String) -> Result<UserVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: user::Model = user::Entity::find()
             .filter(user::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
 
         let roles = user_role::Entity::find()
             .filter(user_role::Column::UserId.eq(&id))
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         let role_ids: Vec<String> = roles.into_iter().map(|r| r.role_id).collect();
@@ -54,11 +50,10 @@ impl UserAppService {
     }
 
     pub async fn create(&self, dto: CreateUserDto) -> Result<UserVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let existing: Option<user::Model> = user::Entity::find()
             .filter(user::Column::UserName.eq(&dto.user_name))
-            .one(&db)
+            .one(&self.db)
             .await?;
 
         if existing.is_some() {
@@ -67,7 +62,7 @@ impl UserAppService {
 
         let role_ids = dto.role_ids.clone();
         let active_model = dto.into_active_model()?;
-        let model = active_model.insert(&db).await?;
+        let model = active_model.insert(&self.db).await?;
 
         if let Some(ids) = role_ids {
             let models: Vec<user_role::ActiveModel> = ids.into_iter().map(|role_id| user_role::ActiveModel {
@@ -75,7 +70,7 @@ impl UserAppService {
                 role_id: Set(role_id),
                 ..Default::default()
             }).collect();
-            user_role::Entity::insert_many_with_fill(models, &db).await?;
+            user_role::Entity::insert_many_with_fill(models, &self.db).await?;
         }
 
         self.sync_tenant_user_index(&model).await?;
@@ -86,16 +81,15 @@ impl UserAppService {
     }
 
     pub async fn update(&self, dto: UpdateUserDto) -> Result<UserVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let role_ids = dto.role_ids.clone();
         let active_model = dto.into_active_model();
-        let model = active_model.update(&db).await?;
+        let model = active_model.update(&self.db).await?;
 
         if let Some(ids) = role_ids {
             user_role::Entity::delete_many()
                 .filter(user_role::Column::UserId.eq(&model.id))
-                .exec(&db)
+                .exec(&self.db)
                 .await?;
 
             let models: Vec<user_role::ActiveModel> = ids.into_iter().map(|role_id| user_role::ActiveModel {
@@ -103,7 +97,7 @@ impl UserAppService {
                 role_id: Set(role_id),
                 ..Default::default()
             }).collect();
-            user_role::Entity::insert_many_with_fill(models, &db).await?;
+            user_role::Entity::insert_many_with_fill(models, &self.db).await?;
         }
 
         self.sync_tenant_user_index(&model).await?;
@@ -114,21 +108,20 @@ impl UserAppService {
     }
 
     pub async fn delete(&self, id: String) -> Result<(), AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: user::Model = user::Entity::find()
             .filter(user::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
 
         let mut am: user::ActiveModel = model.into();
         am.delete_flag = Set(1);
-        am.update(&db).await?;
+        am.update(&self.db).await?;
 
         user_role::Entity::delete_many()
             .filter(user_role::Column::UserId.eq(&id))
-            .exec(&db)
+            .exec(&self.db)
             .await?;
 
         self.remove_tenant_user_index(&id).await?;
@@ -137,17 +130,16 @@ impl UserAppService {
     }
 
     pub async fn update_status(&self, id: String, status: i32) -> Result<(), AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: user::Model = user::Entity::find()
             .filter(user::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
 
         let mut active: user::ActiveModel = model.into();
         active.status = Set(status);
-        active.update(&db).await?;
+        active.update(&self.db).await?;
 
         if let Some(idx) = self.find_tenant_user_index(&id).await? {
             let mut idx_am: tenant_user::ActiveModel = idx.into();
@@ -160,17 +152,16 @@ impl UserAppService {
     }
 
     pub async fn assign_roles(&self, user_id: String, role_ids: Vec<String>) -> Result<(), AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let _model: user::Model = user::Entity::find()
             .filter(user::Column::Id.eq(&user_id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
 
         user_role::Entity::delete_many()
             .filter(user_role::Column::UserId.eq(&user_id))
-            .exec(&db)
+            .exec(&self.db)
             .await?;
 
         let models: Vec<user_role::ActiveModel> = role_ids.into_iter().map(|role_id| user_role::ActiveModel {
@@ -178,17 +169,16 @@ impl UserAppService {
             role_id: Set(role_id),
             ..Default::default()
         }).collect();
-        user_role::Entity::insert_many_with_fill(models, &db).await?;
+        user_role::Entity::insert_many_with_fill(models, &self.db).await?;
 
         Ok(())
     }
 
     pub async fn get_role_ids(&self, user_id: String) -> Result<Vec<String>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let roles = user_role::Entity::find()
             .filter(user_role::Column::UserId.eq(&user_id))
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         Ok(roles.into_iter().map(|r| r.role_id).collect())

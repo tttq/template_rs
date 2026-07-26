@@ -1,5 +1,4 @@
 use common::error::AppError;
-use common::tenant_db::get_effective_db;
 use summer::plugin::service::Service;
 use sea_orm_ext::DbConn;
 use system_entity::dept;
@@ -16,11 +15,10 @@ pub struct DeptAppService {
 
 impl DeptAppService {
     pub async fn list(&self) -> Result<Vec<DeptVo>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let items: Vec<dept::Model> = dept::Entity::find()
             .order_by_asc(dept::Column::DeptSort)
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         let vos: Vec<DeptVo> = items.into_iter().map(DeptVo::from).collect();
@@ -28,11 +26,10 @@ impl DeptAppService {
     }
 
     pub async fn list_tree(&self) -> Result<Vec<DeptVo>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let items: Vec<dept::Model> = dept::Entity::find()
             .order_by_asc(dept::Column::DeptSort)
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         let vos: Vec<DeptVo> = items.into_iter().map(DeptVo::from).collect();
@@ -74,11 +71,10 @@ impl DeptAppService {
     }
 
     pub async fn get_by_id(&self, id: String) -> Result<DeptVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: dept::Model = dept::Entity::find()
             .filter(dept::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("部门不存在".to_string()))?;
 
@@ -86,45 +82,42 @@ impl DeptAppService {
     }
 
     pub async fn create(&self, dto: CreateDeptDto) -> Result<DeptVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let active_model = dto.into_active_model();
-        let model = active_model.insert(&db).await?;
+        let model = active_model.insert(&self.db).await?;
         Ok(model.into())
     }
 
     pub async fn update(&self, dto: UpdateDeptDto) -> Result<DeptVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let active_model = dto.into_active_model();
-        let model = active_model.update(&db).await?;
+        let model = active_model.update(&self.db).await?;
         Ok(model.into())
     }
 
     pub async fn delete(&self, id: String) -> Result<(), AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: dept::Model = dept::Entity::find()
             .filter(dept::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("部门不存在".to_string()))?;
 
         let children: Vec<dept::Model> = dept::Entity::find()
             .filter(dept::Column::ParentId.eq(&id))
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         // 批量软删除子部门（单条 SQL）
         if !children.is_empty() {
             let child_models: Vec<dept::ActiveModel> = children.into_iter().map(Into::into).collect();
-            dept::Entity::delete_many_soft(child_models, &db).await?;
+            dept::Entity::delete_many_soft(child_models, &self.db).await?;
         }
 
         // 软删除父部门：保留 update 审计字段填充（who/when deleted）
         let mut am: dept::ActiveModel = model.into();
         am.delete_flag = Set(1);
-        am.update(&db).await?;
+        am.update(&self.db).await?;
         Ok(())
     }
 }

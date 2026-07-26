@@ -6,7 +6,7 @@ use sea_orm_ext::plugin::{
 };
 use summer::{auto_config, App};
 use summer::plugin::MutableComponentRegistry;
-use summer_web::{WebPlugin, WebConfigurator};
+use summer_web::{WebPlugin, WebConfigurator, LayerConfigurator};
 use summer_redis::RedisPlugin;
 use summer_sa_token::{SaTokenPlugin, SaTokenAuthConfigurator};
 use common::{AuditFieldFillHandler, SaTokenTenantIdProvider};
@@ -39,6 +39,10 @@ async fn main() {
         .add_component(DynamicTenantConfigProviderComponent::new(Arc::new(TenantConfigProvider::new())))
         .sa_token_configure(config::SaTokenConfig)
         .add_router(routes::system_routes())
+        // 注册全局错误响应中间件：
+        // 将 summer-sa-token 权限校验失败（401/403）的英文错误响应
+        // 替换为统一的 ApiResponse JSON 与中文提示（"无权限访问" / "未登录或登录已过期"）
+        .add_router_layer(routes::with_error_handler)
         .run()
         .await
 }

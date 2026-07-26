@@ -1,5 +1,4 @@
 use common::error::AppError;
-use common::tenant_db::get_effective_db;
 use summer::plugin::service::Service;
 use sea_orm_ext::DbConn;
 use system_entity::menu;
@@ -16,11 +15,10 @@ pub struct MenuAppService {
 
 impl MenuAppService {
     pub async fn list(&self) -> Result<Vec<MenuVo>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let items: Vec<menu::Model> = menu::Entity::find()
             .order_by_asc(menu::Column::SortOrder)
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         let vos: Vec<MenuVo> = items.into_iter().map(MenuVo::from).collect();
@@ -28,11 +26,10 @@ impl MenuAppService {
     }
 
     pub async fn list_tree(&self) -> Result<Vec<MenuVo>, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let items: Vec<menu::Model> = menu::Entity::find()
             .order_by_asc(menu::Column::SortOrder)
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         let vos: Vec<MenuVo> = items.into_iter().map(MenuVo::from).collect();
@@ -74,11 +71,10 @@ impl MenuAppService {
     }
 
     pub async fn get_by_id(&self, id: String) -> Result<MenuVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: menu::Model = menu::Entity::find()
             .filter(menu::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("菜单不存在".to_string()))?;
 
@@ -86,45 +82,42 @@ impl MenuAppService {
     }
 
     pub async fn create(&self, dto: CreateMenuDto) -> Result<MenuVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let active_model = dto.into_active_model();
-        let model = active_model.insert(&db).await?;
+        let model = active_model.insert(&self.db).await?;
         Ok(model.into())
     }
 
     pub async fn update(&self, dto: UpdateMenuDto) -> Result<MenuVo, AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let active_model = dto.into_active_model();
-        let model = active_model.update(&db).await?;
+        let model = active_model.update(&self.db).await?;
         Ok(model.into())
     }
 
     pub async fn delete(&self, id: String) -> Result<(), AppError> {
-        let db = get_effective_db(&self.db).await?;
 
         let model: menu::Model = menu::Entity::find()
             .filter(menu::Column::Id.eq(&id))
-            .one(&db)
+            .one(&self.db)
             .await?
             .ok_or_else(|| AppError::NotFound("菜单不存在".to_string()))?;
 
         let children: Vec<menu::Model> = menu::Entity::find()
             .filter(menu::Column::ParentId.eq(&id))
-            .all(&db)
+            .all(&self.db)
             .await?;
 
         // 批量软删除子菜单（单条 SQL）
         if !children.is_empty() {
             let child_models: Vec<menu::ActiveModel> = children.into_iter().map(Into::into).collect();
-            menu::Entity::delete_many_soft(child_models, &db).await?;
+            menu::Entity::delete_many_soft(child_models, &self.db).await?;
         }
 
         // 软删除父菜单：保留 update 审计字段填充（who/when deleted）
         let mut am: menu::ActiveModel = model.into();
         am.delete_flag = Set(1);
-        am.update(&db).await?;
+        am.update(&self.db).await?;
         Ok(())
     }
 }

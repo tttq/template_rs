@@ -9,3 +9,20 @@ pub fn hash_password(plain: &str) -> Result<String, BcryptError> {
 pub fn verify_password(plain: &str, hashed: &str) -> Result<bool, BcryptError> {
     verify(plain, hashed)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 调用 hash_password 并在控制台打印结果
+    ///
+    /// 运行: cargo test -p common print_hashed_password -- --nocapture
+    #[test]
+    fn print_hashed_password() {
+        let plain = "admin123";
+        let hashed = hash_password(plain).expect("hash failed");
+        println!("plain:  {}", plain);
+        println!("hashed: {}", hashed);
+        assert!(verify_password(plain, &hashed).unwrap());
+    }
+}

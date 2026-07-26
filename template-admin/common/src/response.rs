@@ -24,4 +24,12 @@ impl<T: Serialize> ApiResponse<T> {
             data: None,
         }
     }
+
+    pub fn unauthorized(message: &str) -> Self {
+        Self::error(401, message)
+    }
+
+    pub fn forbidden(message: &str) -> Self {
+        Self::error(403, message)
+    }
 }
