@@ -157,6 +157,10 @@ export const useUserStore = defineStore('user', () => {
     } catch {
       // ignore
     }
+    // 动态导入避免与 router/index.ts 形成循环依赖
+    // 清理动态路由，确保下一次登录时根据新用户的菜单重新生成
+    const { teardownDynamicRoutes } = await import('@/router')
+    teardownDynamicRoutes()
     clearTokenData()
     userInfo.value = null
     roles.value = []

@@ -59,6 +59,24 @@ async fn run() {
         }
     }
 
+    // 增量迁移：同步菜单权限数据，与后端 handler 的 #[sa_check_permission] 宏对齐
+    // 使用 ON CONFLICT 实现幂等 upsert，已存在的记录只更新业务字段，可重复执行
+    let sync_sql = include_str!("m20260726_000003_sync_menu_permissions.sql");
+    for statement in sync_sql.split(';') {
+        let trimmed = statement.trim();
+        if trimmed.is_empty() || trimmed.starts_with("--") {
+            continue;
+        }
+        match client.execute(trimmed, &[]).await {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("Error executing sync: {}... Error: {}", &trimmed[..trimmed.len().min(80)], e);
+                panic!("Menu permission sync migration failed");
+            }
+        }
+    }
+    println!("Menu permissions synchronized with handler macros");
+
     let rows = client.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE 'auth_sys%' ORDER BY table_name", &[]).await.unwrap();
     println!("Tables after migration:");
     for row in &rows {
