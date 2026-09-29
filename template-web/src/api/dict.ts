@@ -7,7 +7,11 @@ export interface DictTypeVo {
   status: number
   remark?: string
   createTime: string
+  createBy?: string
+  createId?: string
   updateTime: string
+  updateBy?: string
+  updateId?: string
 }
 
 export interface DictItemVo {
@@ -41,11 +45,25 @@ export const dictTypeApi = {
   delete: (id: string) => request.delete(`/system/dicts/types/${id}`),
 }
 
+/** 字典项选项（仅 label/value，供业务页面下拉使用） */
+export interface DictOptionVo {
+  label: string
+  value: string
+}
+
 export const dictItemApi = {
   getByTypeId: (typeId: string) =>
     request.get<DictItemVo[]>(`/system/dicts/items/by-type/${typeId}`),
   getByTypeCode: (typeCode: string) =>
     request.get<DictItemVo[]>(`/system/dicts/types/${typeCode}/items`),
+  /**
+   * 按字典类型编码取**启用中**的字典项选项（仅 label/value）。
+   *
+   * 走仅需登录的 `/system/dicts/options/{typeCode}`：
+   * 业务页面（如采购的工厂类型）无需 `dict:list` 权限即可渲染下拉。
+   */
+  getOptionsByTypeCode: (typeCode: string) =>
+    request.get<DictOptionVo[]>(`/system/dicts/options/${typeCode}`),
   getById: (id: string) => request.get<DictItemVo>(`/system/dicts/items/${id}`),
   create: (data: any) => request.post('/system/dicts/items', data),
   update: (id: string, data: any) => request.put(`/system/dicts/items/${id}`, data),

@@ -19,4 +19,14 @@ chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
+# Excel 导入导出引擎（fast-excel）：common::xlsx 统一生成 xlsx
+fast-excel = { workspace = true }
 bcrypt = "0.15"
+log = { workspace = true }
+rand = { workspace = true }
+sha2 = { workspace = true }
+aes-gcm = { workspace = true }
+base64 = { workspace = true }
+async-trait = { workspace = true }
+inventory = { workspace = true }
+summer-mail = { workspace = true }

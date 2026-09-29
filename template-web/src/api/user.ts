@@ -11,7 +11,11 @@ export interface UserVo {
   adminFlag: number
   deptId?: string
   createTime: string
+  createBy?: string
+  createId?: string
   updateTime: string
+  updateBy?: string
+  updateId?: string
   tenantId?: string
   roleIds?: string[]
 }

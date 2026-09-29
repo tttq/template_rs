@@ -12,9 +12,17 @@ summer-web = ["dep:summer-web", "dep:summer-redis", "dep:sea-orm-ext"]
 system-entity = { workspace = true }
 system-domain = { workspace = true }
 system-application = { workspace = true }
+fast-excel = { workspace = true }
 common = { workspace = true }
-summer-web = { workspace = true, optional = true }
+summer = { workspace = true }
+# multipart feature：代码生成器产出的导入接口需要 axum::extract::Multipart
+summer-web = { workspace = true, optional = true, features = ["multipart"] }
 summer-redis = { workspace = true, optional = true }
 summer-sa-token = { workspace = true, optional = true }
+sa-token-core = { workspace = true }
 sea-orm-ext = { workspace = true, optional = true }
 serde_json = { workspace = true }
+futures-util = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true, features = ["rt", "time", "macros", "sync"] }
+chrono = { workspace = true }

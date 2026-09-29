@@ -3,6 +3,42 @@ use system_entity::dict_type;
 use sea_orm::ActiveValue::Set;
 use chrono::{DateTime, Utc};
 use common::datetime_format;
+use common::pagination::PageQuery;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DictTypeQuery {
+    /// 分页参数（page / pageSize，含钳制）
+    #[serde(flatten)]
+    pub page_query: PageQuery,
+    /// 查询条件 — 「字典名称」输入框；对应数据库列 auth_sys_dict_type.dict_name；模糊匹配（contains）
+    pub dict_name: Option<String>,
+    /// 查询条件 — 「字典编码」输入框；对应数据库列 auth_sys_dict_type.dict_type；模糊匹配（contains）
+    pub dict_type: Option<String>,
+    /// 查询条件 — 创建时间起始；>= 开始时间；对应数据库列 auth_sys_dict_type.create_time；区间（>=）
+    pub create_time_start: Option<String>,
+    /// 查询条件 — 创建时间结束；<= 结束时间；对应数据库列 auth_sys_dict_type.create_time；区间（<=）
+    pub create_time_end: Option<String>,
+    /// 查询条件 — 「创建人」输入框；对应数据库列 auth_sys_dict_type.create_by；模糊匹配（contains）
+    pub create_by: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DictTypeExportQuery {
+    /// 查询条件 — 「字典名称」输入框；对应数据库列 auth_sys_dict_type.dict_name；模糊匹配（contains）
+    pub dict_name: Option<String>,
+    /// 查询条件 — 「字典编码」输入框；对应数据库列 auth_sys_dict_type.dict_type；模糊匹配（contains）
+    pub dict_type: Option<String>,
+    /// 查询条件 — 创建时间起始；>= 开始时间；对应数据库列 auth_sys_dict_type.create_time；区间（>=）
+    pub create_time_start: Option<String>,
+    /// 查询条件 — 创建时间结束；<= 结束时间；对应数据库列 auth_sys_dict_type.create_time；区间（<=）
+    pub create_time_end: Option<String>,
+    /// 查询条件 — 「创建人」输入框；对应数据库列 auth_sys_dict_type.create_by；模糊匹配（contains）
+    pub create_by: Option<String>,
+    /// 导出 ID 列表（逗号分隔，勾选导出）；对应数据库列 auth_sys_dict_type.id；列表（IN）
+    pub ids: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -63,8 +99,12 @@ pub struct DictTypeVo {
     pub remark: Option<String>,
     #[serde(with = "datetime_format")]
     pub create_time: DateTime<Utc>,
+    pub create_by: Option<String>,
+    pub create_id: Option<String>,
     #[serde(with = "datetime_format")]
     pub update_time: DateTime<Utc>,
+    pub update_by: Option<String>,
+    pub update_id: Option<String>,
     pub tenant_id: Option<String>,
 }
 
@@ -77,7 +117,11 @@ impl From<dict_type::Model> for DictTypeVo {
             status: m.status,
             remark: m.remark,
             create_time: m.create_time,
+            create_by: m.create_by,
+            create_id: m.create_id,
             update_time: m.update_time,
+            update_by: m.update_by,
+            update_id: m.update_id,
             tenant_id: m.tenant_id,
         }
     }

@@ -10,6 +10,8 @@ pub struct Model {
     #[sea_orm(primary_key, auto_generate)]
     pub id: String,
     pub parent_id: String,
+    /// 所属客户端ID（auth_sys_client.id）：角色只在其所属客户端内生效
+    pub client_id: String,
     pub role_name: String,
     pub role_code: String,
     pub role_sort: i32,
@@ -40,4 +42,3 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-

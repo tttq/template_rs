@@ -15,7 +15,11 @@ export interface TenantVo {
   expireTime?: string
   remark?: string
   createTime: string
+  createBy?: string
+  createId?: string
   updateTime: string
+  updateBy?: string
+  updateId?: string
 }
 
 export interface CreateTenantFullParams {

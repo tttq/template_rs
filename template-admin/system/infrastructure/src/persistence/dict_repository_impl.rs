@@ -49,7 +49,7 @@ impl DictTypeRepository for DictTypeRepositoryImpl {
             .filter(dict_type::Column::Id.eq(id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("字典类型不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@dict_type_not_found".to_string()))?;
         let mut am: dict_type::ActiveModel = model.into();
         am.delete_flag = Set(1);
         am.update(&self.db).await?;
@@ -101,7 +101,7 @@ impl DictItemRepository for DictItemRepositoryImpl {
             .filter(dict_item::Column::Id.eq(id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("字典项不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@dict_item_not_found".to_string()))?;
         let mut am: dict_item::ActiveModel = model.into();
         am.delete_flag = Set(1);
         am.update(&self.db).await?;

@@ -59,7 +59,7 @@ impl TenantUserService {
             .filter(user::Column::UserName.eq(user_name))
             .one(tenant_db)
             .await?
-            .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@user_not_found".to_string()))?;
 
         let mut am: user::ActiveModel = user.into();
         am.delete_flag = Set(1);

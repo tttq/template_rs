@@ -7,6 +7,27 @@
   --component-bg: #fff;
   --border-color: #f0f0f0;
   --app-font-size: 14px;
+
+  /* =============================================================
+   * 主题令牌（靛蓝体系）：主色、品牌渐变与侧栏配色
+   * 组件内一律引用这些变量，不要写死十六进制色值
+   * ============================================================= */
+  --brand-primary: #667eea;
+  --brand-primary-hover: #7c8ff0;
+  --brand-primary-active: #5266c9;
+  --brand-primary-light: rgba(102, 126, 234, 0.12);
+  --brand-primary-lighter: rgba(102, 126, 234, 0.08);
+  --brand-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  /* 侧栏（深色靛蓝，明暗主题共用同一观感） */
+  --sider-bg: linear-gradient(180deg, #1b1832 0%, #24243e 100%);
+  --sider-bg-solid: #1b1832;
+  --sider-text: rgba(255, 255, 255, 0.72);
+  --sider-text-active: #fff;
+  --sider-item-hover-bg: rgba(255, 255, 255, 0.08);
+  --sider-item-active-bg: #667eea;
+  --sider-logo-text: #fff;
+  --sider-border: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme='dark'] {
@@ -17,6 +38,15 @@
   --content-bg: #000;
   --component-bg: #1f1f1f;
   --border-color: #303030;
+
+  /* 暗色下主色提亮，保证在深底上的对比度 */
+  --brand-primary: #8b9cf7;
+  --brand-primary-hover: #a3b0f9;
+  --brand-primary-active: #667eea;
+  --brand-primary-light: rgba(139, 156, 247, 0.16);
+  --brand-primary-lighter: rgba(139, 156, 247, 0.08);
+  --sider-bg: linear-gradient(180deg, #131126 0%, #1b1832 100%);
+  --sider-bg-solid: #131126;
 }
 
 html, body, #app {
@@ -95,6 +125,7 @@ html, body, #app {
 }
 
 .mt-4 { margin-top: 4px; }
+.mt-3 { margin-top: 12px; }
 .mt-8 { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }
 .mt-16 { margin-top: 16px; }
@@ -119,6 +150,16 @@ html, body, #app {
 
 .text-center { text-align: center; }
 .text-right { text-align: right; }
+/* 表格单元格内单行省略（配合 a-tooltip：鼠标悬停在上方显示完整内容） */
+.cell-ellipsis {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 .text-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;

@@ -16,6 +16,9 @@ edition = "2024"
 
 [workspace.dependencies]
 common = { path = "common" }
+# 通用 Excel 导入导出引擎（fast-excel，已发布 crates.io）：流式读写 / 单元格图片 / 动态表头 / 批量落库
+# 注意：derive 宏展开使用 `::fast_excel` 绝对路径，业务代码统一 `use fast_excel::...`，依赖名勿改为 excel
+fast-excel = { version = "0.3.0" }
 system-entity = { path = "system/entity" }
 system-domain = { path = "system/domain" }
 system-application = { path = "system/application" }
@@ -26,9 +29,11 @@ summer = "0.7.1"
 summer-web = "0.7.1"
 summer-redis = "0.7.1"
 summer-sa-token = "0.7.1"
+futures-util = "0.3"
 
 sea-orm = "2.0.0"
-sea-orm-ext = { path = "D:\\Projcets\\Rust\\summer-sea-orm-ext", package = "summer-sea-orm-ext", features = ["summer", "summer-web", "default", "postgres", "rustls", "runtime-tokio"] }
+# sea-orm-ext（已发布 crates.io）：Auto-Fill / Soft-Delete / 多租户 / 动态租户 + Summer 插件
+sea-orm-ext = { version = "0.0.4", features = ["summer", "summer-web", "default", "postgres", "rustls", "runtime-tokio"] }
 sea-orm-migration = { version = "2.0.0", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 sea-query = "1.0.1"
 
@@ -37,6 +42,8 @@ sa-token-adapter = "0.1.15"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# 启动期自动注册（路由 auto_router 与异步导出任务共用）
+inventory = "0.3"
 
 tokio = "1"
 async-trait = "0.1"
@@ -47,11 +54,28 @@ chrono = { version = "0.4", features = ["serde"] }
 tokio-postgres = "0.7"
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 
-zip = "2"
+# 代码生成器只写 deflate 压缩的 zip：关掉默认特性，避免引入 xz/lzma、zstd、bzip2
+zip = { version = "2", default-features = false, features = ["deflate"] }
 sysinfo = "0.33"
 num_cpus = "1"
 log = "0.4"
-reqwest = { version = "0.12", features = ["json"] }
+# TLS 统一走 rustls：去掉 native-tls/openssl 依赖，缩小二进制
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "charset", "http2", "rustls-tls"] }
+
+# 对象存储驱动（系统管理附件中心 RustFS/S3）：默认特性走 native-tls，这里显式改 rustls
+rust-s3 = { version = "0.35", default-features = false, features = ["tags", "fail-on-err", "tokio-rustls-tls"] }
+
+# 图形验证码（注册/邮箱验证码登录的前置校验）：image 仅启用 png 编码，font8x8 内置 8x8 点阵字体（无需字体文件）
+image = { version = "0.25", default-features = false, features = ["png"] }
+font8x8 = "0.2"
+
+rand = "0.9"
+sha2 = "0.10"
+aes-gcm = "0.10"
+base64 = "0.22"
+
+# SMTP 邮件发送（验证码/通知）：summer-mail 对 lettre 的自动装配插件
+summer-mail = "0.7.1"
 
 [package]
 name = "template-admin"
@@ -63,9 +87,14 @@ summer = { workspace = true }
 summer-web = { workspace = true }
 summer-redis = { workspace = true }
 summer-sa-token = { workspace = true, features = ["with-summer-redis"] }
+summer-mail = { workspace = true }
 sea-orm-ext = { workspace = true }
 common = { workspace = true }
+system-application = { workspace = true }
 system-interface = { workspace = true }
 system-infrastructure = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+async-trait = { workspace = true }
+sea-query = { workspace = true }
 jsonwebtoken = { workspace = true }
+log = { workspace = true }

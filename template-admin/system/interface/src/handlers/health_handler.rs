@@ -7,16 +7,6 @@ use summer_redis::Redis;
 use summer_sa_token::sa_ignore;
 use sea_orm_ext::{check_all_tenant_databases, HealthReport};
 
-/// 健康检查端点
-///
-/// 检查项：
-/// - 主数据库（含 fallback 链）+ 所有租户专属数据库（通过 `check_all_tenant_databases`）
-/// - Redis 连通性（PING）
-///
-/// 返回 HTTP 200（全部健康）或 HTTP 503（存在不健康项），响应体为 JSON 报告。
-///
-/// 注意：本 handler 通过 `#[get("/health")]` 宏自动注册到 `auto_router()`（inventory），
-/// 无需在 `system_routes()` 中手动 `typed_route`，否则会导致 `GET /health` 路由重复注册 panic。
 #[get("/health")]
 #[sa_ignore]
 async fn health_check(Component(redis): Component<Redis>) -> impl IntoResponse {

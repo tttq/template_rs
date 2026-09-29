@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { generateRoutesFromMenus, clearDynamicRoutes } from './dynamic'
+import { ensurePermissionStream } from '@/utils/permissionStream'
 
 /**
  * 静态路由
@@ -21,6 +22,35 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'route.login' },
   },
   {
+    // 完善账户信息（微信自动注册的惰性账号首次进入系统前必填）
+    // 用 BlankLayout：未完善时不应看到后台框架
+    path: '/profile-setup',
+    name: 'ProfileSetup',
+    component: () => import('@/layouts/BlankLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'ProfileSetupPage',
+        component: () => import('@/views/profile-setup/index.vue'),
+        meta: { title: '完善账户信息' },
+      },
+    ],
+  },
+  {
+    // Web 微信扫码回调（微信跳转到此页，再交给后端换 token）
+    path: '/login/wechat/callback',
+    name: 'WechatCallback',
+    component: () => import('@/layouts/BlankLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'WechatCallbackPage',
+        component: () => import('@/views/login/wechat-callback.vue'),
+        meta: { title: '微信登录' },
+      },
+    ],
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('@/layouts/BasicLayout.vue'),
@@ -37,6 +67,12 @@ const routes: RouteRecordRaw[] = [
         name: 'Profile',
         component: () => import('@/views/profile/index.vue'),
         meta: { title: 'route.profile' },
+      },
+      {
+        path: 'system/export',
+        name: 'SystemExportCenter',
+        component: () => import('@/views/system/export/index.vue'),
+        meta: { title: '导出中心' },
       },
     ],
   },
@@ -69,6 +105,7 @@ let dynamicRoutesRegistered = false
  *
  * 调用时机：用户登录后首次进入页面、或在路由守卫中检测到 userInfo 已加载但动态路由未注册时。
  * 重复调用安全：会先清理上一次的动态路由再重新注册。
+ * 注意：即使 menus 为空也标记已注册——否则守卫中「未注册」分支会对未知路径无限重入。
  */
 export function setupDynamicRoutes() {
   const userStore = useUserStore()
@@ -78,11 +115,11 @@ export function setupDynamicRoutes() {
     dynamicRoutesRegistered = false
   }
   const menus = userStore.menus
-  if (!menus.length) return
-  const dynamicRoutes = generateRoutesFromMenus(menus)
-  for (const route of dynamicRoutes) {
-    // 添加为 Layout 的子路由
-    router.addRoute('Layout', route)
+  if (menus.length) {
+    for (const route of generateRoutesFromMenus(menus)) {
+      // 添加为 Layout 的子路由
+      router.addRoute('Layout', route)
+    }
   }
   dynamicRoutesRegistered = true
 }
@@ -103,7 +140,8 @@ router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
 
   if (!userStore.token) {
-    if (to.path === '/login') {
+    // 开放页面：登录页 + 微信扫码回调（回调页自行完成登录）
+    if (to.path === '/login' || to.path === '/login/wechat/callback') {
       next()
     } else {
       next({ path: '/login', query: { redirect: to.fullPath } })
@@ -116,15 +154,19 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  // 已登录：建立权限变更通知流（幂等，断线自动重连）
+  ensurePermissionStream()
+
   // 首次进入或刷新页面：拉取用户信息并注册动态路由
   if (!userStore.userInfo) {
     try {
       await userStore.getUserInfo()
       // 根据后端返回的菜单动态注册路由
       setupDynamicRoutes()
-      // 重新导航到目标路由，确保动态路由生效
-      // 使用 replace 避免在历史记录中留下重定向前的中间状态
-      next({ ...to, replace: true })
+      // 重新导航到目标路由，确保动态路由生效。
+      // 关键：不能展开整个 `to` —— 刷新时首次解析已命中兜底 404（to.name='404'），
+      // 展开会以 name 优先导航到 404；必须仅携带 path/query/hash 触发按路径重新解析。
+      next({ path: to.path, query: to.query, hash: to.hash, replace: true })
       return
     } catch {
       try {
@@ -140,7 +182,19 @@ router.beforeEach(async (to, _from, next) => {
   // 已加载 userInfo 但动态路由未注册（如切换租户后 menus 变化）
   if (!dynamicRoutesRegistered) {
     setupDynamicRoutes()
-    next({ ...to, replace: true })
+    next({ path: to.path, query: to.query, hash: to.hash, replace: true })
+    return
+  }
+
+  // 完善账户信息闸口：微信自动注册的惰性账号（profileCompleted=false）
+  // 必须先完善资料才能进入系统；已完善的账号不应停留在完善页
+  const profileCompleted = userStore.userInfo.profileCompleted !== false
+  if (!profileCompleted && to.path !== '/profile-setup') {
+    next({ path: '/profile-setup', replace: true })
+    return
+  }
+  if (profileCompleted && to.path === '/profile-setup') {
+    next({ path: '/', replace: true })
     return
   }
 

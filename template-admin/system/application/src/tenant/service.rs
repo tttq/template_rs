@@ -1,13 +1,17 @@
 use common::error::AppError;
-use common::pagination::{PageQuery, PageResult};
+use common::pagination::PageResult;
 use summer::plugin::service::Service;
 use sea_orm_ext::DbConn;
 use sea_orm_ext::plugin::TenantManagerComponent;
 use system_entity::{tenant, user, role, role_menu, menu, tenant_user, user_role};
-use sea_orm::{QueryFilter, ColumnTrait, PaginatorTrait, ActiveValue::Set, ConnectionTrait, DatabaseBackend, Database};
+use sea_orm::{QueryFilter, ColumnTrait, PaginatorTrait, ActiveValue::Set, ConnectionTrait, DatabaseBackend, Database, TransactionTrait};
 use sea_orm::prelude::*;
+use chrono::Utc;
+use fast_excel::ExportTaskContext;
+use summer::App;
+use summer::plugin::ComponentRegistry;
 
-use super::dto::{CreateTenantDto, UpdateTenantDto, TenantVo, TestConnectionDto, CreateDatabaseDto, InitDatabaseDto, CreateTenantFullDto};
+use super::dto::{CreateTenantDto, UpdateTenantDto, TenantVo, TestConnectionDto, CreateDatabaseDto, InitDatabaseDto, CreateTenantFullDto, TenantQuery, TenantExportQuery};
 
 const INIT_SQL: &str = include_str!("init_schema.sql");
 
@@ -22,15 +26,100 @@ pub struct TenantAppService {
 }
 
 impl TenantAppService {
-    pub async fn list(&self, query: PageQuery) -> Result<PageResult<TenantVo>, AppError> {
-        let paginator = tenant::Entity::find()
-            .paginate(&self.db, query.page_size);
+    pub async fn list(&self, query: TenantQuery) -> Result<PageResult<TenantVo>, AppError> {
+        let mut select = tenant::Entity::find();
+
+        if let Some(v) = &query.tenant_name {
+            if !v.is_empty() {
+                select = select.filter(tenant::Column::TenantName.contains(v));
+            }
+        }
+        if let Some(v) = &query.tenant_code {
+            if !v.is_empty() {
+                select = select.filter(tenant::Column::TenantCode.contains(v));
+            }
+        }
+        if let Some(v) = &query.create_time_start {
+            if !v.is_empty() {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(v) {
+                    select = select.filter(tenant::Column::CreateTime.gte(dt.with_timezone(&Utc)));
+                }
+            }
+        }
+        if let Some(v) = &query.create_time_end {
+            if !v.is_empty() {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(v) {
+                    select = select.filter(tenant::Column::CreateTime.lte(dt.with_timezone(&Utc)));
+                }
+            }
+        }
+        if let Some(v) = &query.create_by {
+            if !v.is_empty() {
+                select = select.filter(tenant::Column::CreateBy.contains(v));
+            }
+        }
+
+        let paginator = select.paginate(&self.db, query.page_query.page_size);
 
         let total = paginator.num_items().await?;
-        let items: Vec<tenant::Model> = paginator.fetch_page(query.page - 1).await?;
+        let items: Vec<tenant::Model> = paginator.fetch_page(query.page_query.page - 1).await?;
 
         let vos: Vec<TenantVo> = items.into_iter().map(TenantVo::from).collect();
-        Ok(PageResult::new(vos, total, query.page, query.page_size))
+        Ok(PageResult::new(vos, total, query.page_query.page, query.page_query.page_size))
+    }
+
+    /// 导出租户列表
+    pub async fn export(&self, query: TenantExportQuery) -> Result<Vec<TenantVo>, AppError> {
+        let items: Vec<tenant::Model> = Self::export_select(&query).all(&self.db).await?;
+        Ok(items.into_iter().map(TenantVo::from).collect())
+    }
+
+    /// 可导出行数（同步/异步分流判定；与 `export` 同口径，只 COUNT 不拉数据）
+    pub async fn export_count(&self, query: &TenantExportQuery) -> Result<u64, AppError> {
+        Self::export_select(query).count(&self.db).await.map_err(AppError::from)
+    }
+
+    /// 导出筛选条件（列表导出与行数统计共用同一口径）
+    fn export_select(query: &TenantExportQuery) -> sea_orm::Select<tenant::Entity> {
+        let mut select = tenant::Entity::find();
+
+        if let Some(v) = &query.tenant_name {
+            if !v.is_empty() {
+                select = select.filter(tenant::Column::TenantName.contains(v));
+            }
+        }
+        if let Some(v) = &query.tenant_code {
+            if !v.is_empty() {
+                select = select.filter(tenant::Column::TenantCode.contains(v));
+            }
+        }
+        if let Some(v) = &query.create_time_start {
+            if !v.is_empty() {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(v) {
+                    select = select.filter(tenant::Column::CreateTime.gte(dt.with_timezone(&Utc)));
+                }
+            }
+        }
+        if let Some(v) = &query.create_time_end {
+            if !v.is_empty() {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(v) {
+                    select = select.filter(tenant::Column::CreateTime.lte(dt.with_timezone(&Utc)));
+                }
+            }
+        }
+        if let Some(v) = &query.create_by {
+            if !v.is_empty() {
+                select = select.filter(tenant::Column::CreateBy.contains(v));
+            }
+        }
+        if let Some(ids_str) = &query.ids {
+            if !ids_str.is_empty() {
+                let ids: Vec<String> = ids_str.split(',').map(|s| s.trim().to_string()).collect();
+                select = select.filter(tenant::Column::Id.is_in(ids));
+            }
+        }
+
+        select
     }
 
     pub async fn get_by_id(&self, id: String) -> Result<TenantVo, AppError> {
@@ -38,7 +127,7 @@ impl TenantAppService {
             .filter(tenant::Column::Id.eq(&id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("租户不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@tenant_not_found".to_string()))?;
 
         Ok(model.into())
     }
@@ -50,7 +139,7 @@ impl TenantAppService {
             .await?;
 
         if existing.is_some() {
-            return Err(AppError::BadRequest("租户编码已存在".to_string()));
+            return Err(AppError::BadRequest("@tenant_code_exists".to_string()));
         }
 
         let active_model = dto.into_active_model();
@@ -65,7 +154,7 @@ impl TenantAppService {
             .await?;
 
         if existing.is_some() {
-            return Err(AppError::BadRequest("租户编码已存在".to_string()));
+            return Err(AppError::BadRequest("@tenant_code_exists".to_string()));
         }
 
         let db_type = dto.database_type.clone().unwrap_or_default();
@@ -75,10 +164,10 @@ impl TenantAppService {
         let db_url = build_database_url(&db_type, &db_url_base, None);
         let conn = Database::connect(&db_url)
             .await
-            .map_err(|e| AppError::BadRequest(format!("连接数据库服务器失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@db_connect_failed:{}", e)))?;
 
         conn.ping().await
-            .map_err(|e| AppError::BadRequest(format!("连接测试失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@db_connect_test_failed:{}", e)))?;
 
         let backend = get_database_backend(&db_type);
 
@@ -92,12 +181,12 @@ impl TenantAppService {
 
         conn.execute_unprepared(&sql)
             .await
-            .map_err(|e| AppError::BadRequest(format!("创建数据库失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@db_create_failed:{}", e)))?;
 
         let tenant_db_url = build_database_url(&db_type, &db_url_base, Some(&db_name));
         let tenant_db = Database::connect(&tenant_db_url)
             .await
-            .map_err(|e| AppError::BadRequest(format!("连接租户数据库失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@tenant_db_connect_failed:{}", e)))?;
 
         let sql = adapt_init_sql(INIT_SQL, &backend);
         for statement in sql.split(';') {
@@ -105,7 +194,7 @@ impl TenantAppService {
             if !trimmed.is_empty() {
                 tenant_db.execute_unprepared(trimmed)
                     .await
-                    .map_err(|e| AppError::BadRequest(format!("初始化Schema失败: {}", e)))?;
+                    .map_err(|e| AppError::BadRequest(format!("@tenant_schema_init_failed:{}", e)))?;
             }
         }
 
@@ -122,8 +211,14 @@ impl TenantAppService {
             dept_id: Set(None),
             ..Default::default()
         };
-        let admin_result = admin_user.insert(&tenant_db).await?;
+        // 租户库内的初始化（管理员用户 + 管理员角色 + 菜单授权 + 用户角色）放在同一事务：
+        // 任一步失败都不会留下"有管理员但无角色/无菜单"的半初始化租户库
+        // （租户库与主库是两个连接，无法合并为一个事务，主库写入在事务提交后执行）
+        let tenant_tx = tenant_db.begin().await?;
+        let admin_result = admin_user.insert(&tenant_tx).await?;
 
+        // 客户端归属走列默认值（默认客户端「管理后台」，见 migration initial.sql / tenant init_schema.sql）：
+        // 客户端注册表是全局表，新建租户库不复制客户端数据
         let admin_role = role::ActiveModel {
             role_name: Set("管理员".to_string()),
             role_code: Set("admin".to_string()),
@@ -131,11 +226,11 @@ impl TenantAppService {
             status: Set(1),
             ..Default::default()
         };
-        let role_result = admin_role.insert(&tenant_db).await?;
+        let role_result = admin_role.insert(&tenant_tx).await?;
 
         let menus = menu::Entity::find()
             .filter(menu::Column::Status.eq(1))
-            .all(&tenant_db)
+            .all(&tenant_tx)
             .await?;
 
         for m in menus {
@@ -144,7 +239,7 @@ impl TenantAppService {
                 menu_id: Set(m.id.clone()),
                 ..Default::default()
             };
-            rm.insert(&tenant_db).await?;
+            rm.insert(&tenant_tx).await?;
         }
 
         let user_role_model = user_role::ActiveModel {
@@ -152,7 +247,8 @@ impl TenantAppService {
             role_id: Set(role_result.id),
             ..Default::default()
         };
-        user_role_model.insert(&tenant_db).await?;
+        user_role_model.insert(&tenant_tx).await?;
+        tenant_tx.commit().await?;
 
         let tenant_model = tenant::ActiveModel {
             tenant_name: Set(dto.tenant_name),
@@ -203,7 +299,7 @@ impl TenantAppService {
             .filter(tenant::Column::Id.eq(&id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("租户不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@tenant_not_found".to_string()))?;
 
         let mut am: tenant::ActiveModel = model.into();
         am.delete_flag = Set(1);
@@ -222,10 +318,10 @@ impl TenantAppService {
         let db_url = build_database_url(&dto.database_type, &dto.database_url, None);
         let conn = Database::connect(&db_url)
             .await
-            .map_err(|e| AppError::BadRequest(format!("连接失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@connect_failed:{}", e)))?;
 
         conn.ping().await
-            .map_err(|e| AppError::BadRequest(format!("连接测试失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@db_connect_test_failed:{}", e)))?;
 
         Ok(true)
     }
@@ -234,7 +330,7 @@ impl TenantAppService {
         let db_url = build_database_url(&dto.database_type, &dto.database_url, None);
         let conn = Database::connect(&db_url)
             .await
-            .map_err(|e| AppError::BadRequest(format!("连接数据库服务器失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@db_connect_failed:{}", e)))?;
 
         let backend = get_database_backend(&dto.database_type);
         let sql = match backend {
@@ -247,7 +343,7 @@ impl TenantAppService {
 
         conn.execute_unprepared(&sql)
             .await
-            .map_err(|e| AppError::BadRequest(format!("创建数据库失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@db_create_failed:{}", e)))?;
 
         Ok(format!("数据库 {} 创建成功", dto.database_name))
     }
@@ -256,7 +352,7 @@ impl TenantAppService {
         let db_url = build_database_url(&dto.database_type, &dto.database_url, Some(&dto.database_name));
         let conn = Database::connect(&db_url)
             .await
-            .map_err(|e| AppError::BadRequest(format!("连接数据库失败: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("@tenant_db_connect_failed:{}", e)))?;
 
         let backend = get_database_backend(&dto.database_type);
 
@@ -266,7 +362,7 @@ impl TenantAppService {
             if !trimmed.is_empty() {
                 conn.execute_unprepared(trimmed)
                     .await
-                    .map_err(|e| AppError::BadRequest(format!("执行初始化SQL失败: {}", e)))?;
+                    .map_err(|e| AppError::BadRequest(format!("@tenant_sql_init_failed:{}", e)))?;
             }
         }
 
@@ -312,4 +408,60 @@ fn build_database_url(database_type: &str, base_url: &str, database_name: Option
 
 fn adapt_init_sql(sql: &str, _backend: &DatabaseBackend) -> String {
     sql.to_string()
+}
+
+// ===================== 列表导出（同步表头/行映射 + 异步导出注册） =====================
+
+/// 租户导出表头
+pub const TENANT_HEADERS: &[&str] = &[
+    "租户名称", "租户编码", "隔离模式", "数据库类型", "数据库名称", "状态", "联系人", "联系电话",
+    "联系邮箱", "创建时间", "创建人", "创建人ID", "修改时间", "修改人", "修改人ID",
+];
+
+fn ts(t: chrono::DateTime<chrono::Utc>) -> String {
+    t.format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+/// 租户列表 → 导出行
+pub fn tenant_rows(vos: &[TenantVo]) -> Vec<Vec<String>> {
+    vos.iter()
+        .map(|v| {
+            vec![
+                v.tenant_name.clone(),
+                v.tenant_code.clone(),
+                if v.mode == "database" { "数据库隔离" } else { "表隔离" }.to_string(),
+                v.database_type.clone().unwrap_or_default(),
+                v.database_name.clone().unwrap_or_default(),
+                if v.status == 1 { "启用" } else { "禁用" }.to_string(),
+                v.contact_name.clone().unwrap_or_default(),
+                v.contact_phone.clone().unwrap_or_default(),
+                v.contact_email.clone().unwrap_or_default(),
+                ts(v.create_time),
+                v.create_by.clone().unwrap_or_default(),
+                v.create_id.clone().unwrap_or_default(),
+                ts(v.update_time),
+                v.update_by.clone().unwrap_or_default(),
+                v.update_id.clone().unwrap_or_default(),
+            ]
+        })
+        .collect()
+}
+
+/// 异步导出（> 10 万条）：导出中心按 `task_type = "tenant"` 直接调用。
+async fn tenant_export_rows(ctx: ExportTaskContext) -> Result<Vec<Vec<String>>, AppError> {
+    let service = App::global()
+        .try_get_component::<TenantAppService>()
+        .map_err(|e| AppError::Internal(format!("租户服务组件未就绪：{e}")))?;
+    let query: TenantExportQuery = serde_json::from_value(ctx.query.clone())
+        .map_err(|e| AppError::BadRequest(format!("导出参数不合法: {e}")))?;
+    let vos = service.export(query).await?;
+    Ok(tenant_rows(&vos))
+}
+
+// 注册即完成：链接期自动登记，无执行器、无 install()、无需 main.rs 聚合。
+fast_excel::export_task! {
+    task_type = "tenant",
+    sheet_name = "租户数据",
+    headers = TENANT_HEADERS,
+    rows = tenant_export_rows,
 }

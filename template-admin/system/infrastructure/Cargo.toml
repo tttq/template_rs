@@ -15,3 +15,8 @@ common = { workspace = true }
 sea-orm = { workspace = true, optional = true }
 sea-orm-ext = { workspace = true, optional = true }
 async-trait = { workspace = true }
+chrono = { workspace = true }
+summer = { workspace = true }
+serde = { workspace = true }
+rust-s3 = { workspace = true }
+tokio = { workspace = true, features = ["fs"] }

@@ -10,13 +10,17 @@ export interface DeptVo {
   phone?: string
   email?: string
   createTime: string
+  createBy?: string
+  createId?: string
   updateTime: string
+  updateBy?: string
+  updateId?: string
   tenantId?: string
   children?: DeptVo[]
 }
 
 export const deptApi = {
-  list: () => request.get<DeptVo[]>('/system/depts'),
+  list: (params: Record<string, any>) => request.get('/system/depts', { params }),
   listTree: () => request.get<DeptVo[]>('/system/depts/tree'),
   getById: (id: string) => request.get<DeptVo>(`/system/depts/${id}`),
   create: (data: any) => request.post<DeptVo>('/system/depts', data),

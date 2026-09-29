@@ -1,21 +1,16 @@
-use summer_web::{get, post, Router};
+use summer_web::{get, nest, post};
 use summer_web::extractor::{Component, Json, Path};
 use summer_web::axum::response::{IntoResponse, Response};
 use summer_web::axum::http::{StatusCode, header};
 use summer_web::error::WebError;
-use summer_web::handler::TypeRouter;
 use summer_sa_token::sa_check_login;
 use common::response::ApiResponse;
 use system_application::generator::dto::GeneratorConfig;
 use system_application::generator::service::GeneratorAppService;
 
-pub fn routes() -> Router {
-    Router::new()
-        .typed_route(list_tables)
-        .typed_route(get_table_columns)
-        .typed_route(preview_code)
-        .typed_route(download_code)
-}
+#[nest("/system")]
+mod controller {
+    use super::*;
 
 #[get("/tables")]
 #[sa_check_login]
@@ -69,4 +64,5 @@ async fn download_code(
         }
         Err(e) => Ok(Json(ApiResponse::<()>::error(500, &e.to_string())).into_response()),
     }
+}
 }

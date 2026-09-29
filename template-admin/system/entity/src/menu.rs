@@ -10,6 +10,8 @@ pub struct Model {
     #[sea_orm(primary_key, auto_generate)]
     pub id: String,
     pub parent_id: String,
+    /// 所属客户端ID（auth_sys_client.id）：客户端为顶级维度，菜单/功能权限挂在客户端下
+    pub client_id: String,
     pub menu_name: String,
     pub menu_type: String,
     pub path: Option<String>,
@@ -44,4 +46,3 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-

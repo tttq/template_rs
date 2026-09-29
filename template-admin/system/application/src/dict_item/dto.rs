@@ -106,3 +106,15 @@ impl From<dict_item::Model> for DictItemVo {
         }
     }
 }
+
+/// 字典项选项（供业务页面渲染下拉，仅含展示所需字段）
+///
+/// 与 `DictItemVo` 的区别：不含 tenant_id、审计字段等配置细节，
+/// 配合仅需登录的 `GET /api/system/dicts/options/{typeCode}` 使用，
+/// 使业务页面（如采购的工厂类型）无需 `dict:list` 权限即可拿到选项。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DictOptionVo {
+    pub label: String,
+    pub value: String,
+}

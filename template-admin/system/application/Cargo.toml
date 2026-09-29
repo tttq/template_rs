@@ -6,7 +6,7 @@ edition.workspace = true
 [features]
 default = ["sea-orm", "sea-orm-ext", "sea-query", "sa-token", "summer", "summer-redis", "monitor", "http-client", "compression"]
 sea-orm = ["dep:sea-orm", "common/sea-orm"]
-sea-orm-ext = ["dep:sea-orm-ext", "common/sea-orm-ext", "system-entity/sea-orm-ext"]
+sea-orm-ext = ["dep:sea-orm-ext", "common/sea-orm-ext", "system-entity/sea-orm-ext", "system-infrastructure/sea-orm-ext"]
 sa-token = ["dep:summer-sa-token", "dep:sa-token-core", "dep:sa-token-adapter", "common/sa-token"]
 summer = ["dep:summer"]
 summer-redis = ["dep:summer-redis"]
@@ -16,13 +16,20 @@ compression = ["dep:zip"]
 
 [dependencies]
 system-entity = { workspace = true }
+system-infrastructure = { workspace = true }
 common = { workspace = true }
+fast-excel = { workspace = true }
+# 附件中心上传图片压缩：在工作区默认 png（验证码）之外补充 jpeg / bmp 编解码
+image = { workspace = true, features = ["jpeg", "bmp"] }
+inventory = { workspace = true }
+async-trait = { workspace = true }
 sea-orm = { workspace = true, optional = true }
 sea-orm-ext = { workspace = true, optional = true }
 sea-query = { workspace = true, optional = true }
 summer = { workspace = true, optional = true }
 summer-sa-token = { workspace = true, optional = true, features = ["with-summer-redis"] }
 summer-redis = { workspace = true, optional = true }
+summer-mail = { workspace = true }
 sa-token-core = { workspace = true, optional = true }
 sa-token-adapter = { workspace = true, optional = true }
 chrono = { workspace = true }
@@ -34,3 +41,6 @@ num_cpus = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["time"] }
 log = { workspace = true }
 reqwest = { workspace = true, optional = true }
+rand = { workspace = true }
+base64 = { workspace = true }
+font8x8 = { workspace = true }

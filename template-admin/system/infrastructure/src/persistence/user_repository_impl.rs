@@ -49,7 +49,7 @@ impl UserRepository for UserRepositoryImpl {
             .filter(user::Column::Id.eq(id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@user_not_found".to_string()))?;
         let mut am: user::ActiveModel = model.into();
         am.delete_flag = Set(1);
         am.update(&self.db).await?;

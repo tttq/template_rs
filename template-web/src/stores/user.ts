@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { authApi } from '@/api/auth'
 import type { UserInfo, LoginParams } from '@/api/auth'
 import type { MenuVo } from '@/api/menu'
+import { disconnectPermissionStream } from '@/utils/permissionStream'
+import { CLIENT_CODE, CLIENT_SECRET } from '@/config/client'
 
 const TOKEN_KEY = 'token'
 const REFRESH_TOKEN_KEY = 'refreshToken'
@@ -129,7 +131,12 @@ export const useUserStore = defineStore('user', () => {
   }
 
   async function login(params: LoginParams) {
-    const res = await authApi.login(params)
+    // 客户端身份随登录请求提交：后端按客户端加载菜单/功能权限并做登录限制
+    const res = await authApi.login({
+      clientCode: CLIENT_CODE,
+      clientSecret: CLIENT_SECRET,
+      ...params,
+    })
     setTokenData({
       token: res.token,
       refreshToken: res.refreshToken,
@@ -157,6 +164,7 @@ export const useUserStore = defineStore('user', () => {
     } catch {
       // ignore
     }
+    disconnectPermissionStream()
     // 动态导入避免与 router/index.ts 形成循环依赖
     // 清理动态路由，确保下一次登录时根据新用户的菜单重新生成
     const { teardownDynamicRoutes } = await import('@/router')

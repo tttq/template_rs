@@ -53,7 +53,7 @@ impl DeptRepository for DeptRepositoryImpl {
             .filter(dept::Column::Id.eq(id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("部门不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@dept_not_found".to_string()))?;
         let mut am: dept::ActiveModel = model.into();
         am.delete_flag = Set(1);
         am.update(&self.db).await?;

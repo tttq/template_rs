@@ -1,31 +1,24 @@
-use summer_web::{get, post, put, delete, Router};
+use summer_web::{get, nest, post, put, delete};
 use summer_web::extractor::{Component, Json, Query, Path};
 use summer_web::axum::response::IntoResponse;
 use summer_web::error::WebError;
-use summer_web::handler::TypeRouter;
 use summer_sa_token::sa_check_permission;
 use common::response::ApiResponse;
-use common::pagination::PageQuery;
-use system_application::user::dto::{CreateUserDto, UpdateUserDto};
+use system_application::user::dto::{CreateUserDto, UpdateUserDto, UserQuery, UserExportQuery};
 use system_application::user::service::UserAppService;
+use system_application::user::{USER_HEADERS, user_rows};
+use system_application::export_task::service::ExportTaskAppService;
+use super::list_export::{MAX_SYNC_ROWS, error_response, export_center_hint, sync_export_response};
 
-pub fn routes() -> Router {
-    Router::new()
-        .typed_route(list_users)
-        .typed_route(create_user)
-        .typed_route(get_user_by_id)
-        .typed_route(update_user)
-        .typed_route(update_user_status)
-        .typed_route(delete_user)
-        .typed_route(assign_user_roles)
-        .typed_route(get_user_role_ids)
-}
+#[nest("/system")]
+mod controller {
+    use super::*;
 
 #[get("/users")]
 #[sa_check_permission("user:list")]
 async fn list_users(
     Component(service): Component<UserAppService>,
-    Query(query): Query<PageQuery>,
+    Query(query): Query<UserQuery>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.list(query).await {
         Ok(result) => Json(ApiResponse::success(result)),
@@ -81,7 +74,7 @@ async fn update_user_status(
 ) -> Result<impl IntoResponse, WebError> {
     let status = body.get("status").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
     Ok(match service.update_status(id, status).await {
-        Ok(()) => Json(ApiResponse::success("状态更新成功")),
+        Ok(()) => Json(ApiResponse::success("@status_updated_ok")),
         Err(e) => Json(ApiResponse::error(500, &e.to_string())),
     })
 }
@@ -93,7 +86,7 @@ async fn delete_user(
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, WebError> {
     Ok(match service.delete(id).await {
-        Ok(()) => Json(ApiResponse::success("删除成功")),
+        Ok(()) => Json(ApiResponse::success("@deleted_ok")),
         Err(e) => Json(ApiResponse::error(500, &e.to_string())),
     })
 }
@@ -110,7 +103,7 @@ async fn assign_user_roles(
         .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
         .unwrap_or_default();
     Ok(match service.assign_roles(id, role_ids).await {
-        Ok(()) => Json(ApiResponse::success("分配成功")),
+        Ok(()) => Json(ApiResponse::success("@assigned_ok")),
         Err(e) => Json(ApiResponse::error(500, &e.to_string())),
     })
 }
@@ -125,4 +118,49 @@ async fn get_user_role_ids(
         Ok(ids) => Json(ApiResponse::success(ids)),
         Err(e) => Json(ApiResponse::error(500, &e.to_string())),
     })
+}
+
+/// 可导出行数（同步/异步分流判定）
+#[get("/users/export/count")]
+#[sa_check_permission("user:export")]
+async fn export_user_count(
+    Component(service): Component<UserAppService>,
+    Query(query): Query<UserExportQuery>,
+) -> Result<impl IntoResponse, WebError> {
+    Ok(match service.export_count(&query).await {
+        Ok(total) => Json(ApiResponse::success(serde_json::json!({ "total": total }))),
+        Err(e) => Json(ApiResponse::<serde_json::Value>::error(500, &e.to_string())),
+    })
+}
+
+/// Excel 导出用户列表（≤ [`MAX_SYNC_ROWS`] 同步下载并在导出中心留记录；超过走异步任务）
+#[get("/users/export")]
+#[sa_check_permission("user:export")]
+async fn export_users(
+    Component(service): Component<UserAppService>,
+    Component(exports): Component<ExportTaskAppService>,
+    Query(query): Query<UserExportQuery>,
+) -> Result<impl IntoResponse, WebError> {
+    match service.export_count(&query).await {
+        Ok(total) if total > MAX_SYNC_ROWS => Ok(export_center_hint(total)),
+        Ok(total) => {
+            let query_json = serde_json::to_value(&query).unwrap_or_default();
+            match service.export(query).await {
+                Ok(vos) => Ok(sync_export_response(
+                    "用户数据",
+                    &exports,
+                    "user",
+                    &query_json,
+                    "users-export",
+                    USER_HEADERS,
+                    user_rows(&vos),
+                    total,
+                )
+                .await),
+                Err(e) => Ok(error_response(e)),
+            }
+        }
+        Err(e) => Ok(error_response(e)),
+    }
+}
 }

@@ -49,7 +49,7 @@ impl ConfigRepository for ConfigRepositoryImpl {
             .filter(config::Column::Id.eq(id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("配置不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@config_not_found".to_string()))?;
         let mut am: config::ActiveModel = model.into();
         am.delete_flag = Set(1);
         am.update(&self.db).await?;

@@ -49,7 +49,7 @@ impl TenantRepository for TenantRepositoryImpl {
             .filter(tenant::Column::Id.eq(id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("租户不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@tenant_not_found".to_string()))?;
         let mut am: tenant::ActiveModel = model.into();
         am.delete_flag = Set(1);
         am.update(&self.db).await?;

@@ -53,7 +53,7 @@ impl MenuRepository for MenuRepositoryImpl {
             .filter(menu::Column::Id.eq(id))
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("菜单不存在".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("@menu_not_found".to_string()))?;
         let mut am: menu::ActiveModel = model.into();
         am.delete_flag = Set(1);
         am.update(&self.db).await?;
