@@ -8,11 +8,22 @@
     :layout="layout"
   >
     <a-row :gutter="gutter">
-      <template v-for="item in fields" :key="item.field">
+      <template
+        v-for="item in fields"
+        :key="item.field"
+      >
         <a-col :span="item.span || span">
-          <a-form-item :label="item.label" :name="item.field" :rules="item.rules">
+          <a-form-item
+            :label="item.label"
+            :name="item.field"
+            :rules="item.rules"
+          >
             <template v-if="item.slotName">
-              <slot :name="item.slotName" :model="modelValue" :field="item.field" />
+              <slot
+                :name="item.slotName"
+                :model="modelValue"
+                :field="item.field"
+              />
             </template>
             <template v-else-if="item.type === 'input'">
               <a-input

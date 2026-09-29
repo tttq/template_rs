@@ -15,6 +15,7 @@ export type FieldType =
   | 'dictSelect'
   | 'userPicker'
   | 'datePicker'
+  | 'timeRange'
   | 'rangePicker'
   | 'switch'
   | 'radio'
@@ -33,6 +34,8 @@ export interface FormField {
   dictCode?: string
   props?: Record<string, any>
   slotName?: string
+  /** userPicker 专用：选中后回传给查询参数的值字段（userName=用户名 / id=用户ID 等），默认 userName */
+  displayField?: 'userName' | 'nickName' | 'email' | 'phone' | 'id'
 }
 
 export interface TableColumn {
